@@ -1,21 +1,17 @@
 import React, { useRef, useState } from "react";
+import { PixelArtPreview } from "./PixelArtPreview";
+import { PixelArtShiftControls } from "./PixelArtShiftControls";
+import { Board } from "./Board";
 
 const GRID_SIZES = [8, 16, 32, 64];
 
-function getEmptyGrid(size: number) {
-  return Array.from({ length: size }, () => Array(size).fill("rgba(0,0,0,0)"));
-}
-
-function cloneGrid(grid: string[][]) {
-  return grid.map(row => [...row]);
-}
-
 export default function PixelArtGenerator() {
   const [gridSize, setGridSize] = useState(16);
-  const [grid, setGrid] = useState(() => getEmptyGrid(16));
+  const [board, setBoard] = useState(() => new Board(16));
+  const [grid, setGrid] = useState(() => board.getWindow());
   const [color, setColor] = useState("#000000");
   const [mouseDown, setMouseDown] = useState(false);
-  const [undoStack, setUndoStack] = useState<string[][][]>([]);
+  const [undoStack, setUndoStack] = useState<Board[]>([]);
   const [recentColors, setRecentColors] = useState<string[]>([]);
   const [pinnedColors, setPinnedColors] = useState<string[]>([]);
   const [hoveredPixel, setHoveredPixel] = useState<{x: number, y: number, color: string} | null>(null);
@@ -23,7 +19,6 @@ export default function PixelArtGenerator() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Add a 'bin' color for transparency
   const BIN_COLOR = "rgba(0,0,0,0)";
 
   // Gradient state
@@ -31,47 +26,19 @@ export default function PixelArtGenerator() {
   const [gradientEnd, setGradientEnd] = useState("#ffffff");
   const [gradientSteps, setGradientSteps] = useState(5);
 
-  // Buffer size for each edge
-  const BUFFER_SIZE = 8;
-  // Virtual grid size
-  const virtualSize = gridSize + 2 * BUFFER_SIZE;
-  // The virtual grid: buffer + image + buffer
-  const [virtualGrid, setVirtualGrid] = useState(() => getEmptyGrid(virtualSize));
-  // The visible area is always at (BUFFER_SIZE, BUFFER_SIZE)
-
-  // Sync virtual grid when grid or gridSize changes
-  React.useEffect(() => {
-    const newVirtual = getEmptyGrid(virtualSize);
-    for (let y = 0; y < gridSize; y++) {
-      for (let x = 0; x < gridSize; x++) {
-        newVirtual[y + BUFFER_SIZE][x + BUFFER_SIZE] = grid[y][x];
-      }
-    }
-    setVirtualGrid(newVirtual);
-  }, [grid, gridSize]);
-
-  // Helper to update grid from virtualGrid
-  function updateGridFromVirtual(vg: string[][]) {
-    const newGrid = getEmptyGrid(gridSize);
-    for (let y = 0; y < gridSize; y++) {
-      for (let x = 0; x < gridSize; x++) {
-        newGrid[y][x] = vg[y + BUFFER_SIZE][x + BUFFER_SIZE];
-      }
-    }
-    setGrid(newGrid);
+  // Helper to update grid from board
+  function syncGrid(b: Board) {
+    setGrid(b.getWindow());
   }
 
   // Handle grid size change
   function handleGridSizeChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const size = parseInt(e.target.value);
+    const newBoard = new Board(size);
     setGridSize(size);
-    setGrid(getEmptyGrid(size));
+    setBoard(newBoard);
+    setGrid(newBoard.getWindow());
     setUndoStack([]);
-  }
-
-  // Handle color change
-  function handleColorChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setColor(e.target.value);
   }
 
   // Add color to recent colors (if not already present, and not transparent)
@@ -85,12 +52,13 @@ export default function PixelArtGenerator() {
 
   // Handle pixel coloring (add color to recents)
   function handlePixelAction(row: number, col: number) {
-    setUndoStack(stack => [...stack, cloneGrid(grid)]);
-    setGrid(prev => {
-      const newGrid = cloneGrid(prev);
-      newGrid[row][col] = color;
-      return newGrid;
-    });
+    setUndoStack(stack => [...stack, board]);
+    const newBoard = new Board(board.size);
+    newBoard.data = board.getVirtualGrid();
+    newBoard.window = { ...board.window };
+    newBoard.setPixel(row, col, color);
+    setBoard(newBoard);
+    setGrid(newBoard.getWindow());
     addRecentColor(color);
   }
 
@@ -116,9 +84,23 @@ export default function PixelArtGenerator() {
     setUndoStack(stack => {
       if (stack.length === 0) return stack;
       const prev = stack[stack.length - 1];
-      setGrid(prev);
+      setBoard(prev);
+      setGrid(prev.getWindow());
       return stack.slice(0, -1);
     });
+  }
+
+  // Shift logic: move the window, not the pixels
+  function shiftWindow(direction: 'up' | 'down' | 'left' | 'right') {
+    const newBoard = new Board(board.size);
+    newBoard.data = board.getVirtualGrid();
+    newBoard.window = { ...board.window };
+    if (direction === 'up') newBoard.shift(0, -1);
+    if (direction === 'down') newBoard.shift(0, 1);
+    if (direction === 'left') newBoard.shift(-1, 0);
+    if (direction === 'right') newBoard.shift(1, 0);
+    setBoard(newBoard);
+    setGrid(newBoard.getWindow());
   }
 
   // Load image
@@ -204,7 +186,7 @@ export default function PixelArtGenerator() {
       img.src = lastTexture;
     } else {
       setUndoStack([]);
-      setGrid(getEmptyGrid(gridSize));
+      setGrid(new Board(gridSize).getWindow());
     }
   }
 
@@ -234,79 +216,21 @@ export default function PixelArtGenerator() {
     });
   }
 
-  // Shift logic: move the visible window in the virtual grid
-  function shiftGrid(direction: 'up' | 'down' | 'left' | 'right') {
-    setUndoStack(stack => [...stack, cloneGrid(grid)]);
-    setVirtualGrid(prev => {
-      const vg = cloneGrid(prev);
-      if (direction === 'up') {
-        // Only allow if not at top buffer
-        if (vg[BUFFER_SIZE - 1].slice(BUFFER_SIZE, BUFFER_SIZE + gridSize).some(c => c !== BIN_COLOR)) {
-          return prev;
-        }
-        for (let y = BUFFER_SIZE - 1; y < BUFFER_SIZE + gridSize - 1; y++) {
-          for (let x = BUFFER_SIZE; x < BUFFER_SIZE + gridSize; x++) {
-            vg[y][x] = vg[y + 1][x];
-          }
-        }
-        for (let x = BUFFER_SIZE; x < BUFFER_SIZE + gridSize; x++) {
-          vg[BUFFER_SIZE + gridSize - 1][x] = BIN_COLOR;
-        }
-      } else if (direction === 'down') {
-        if (vg[BUFFER_SIZE + gridSize].slice(BUFFER_SIZE, BUFFER_SIZE + gridSize).some(c => c !== BIN_COLOR)) {
-          return prev;
-        }
-        for (let y = BUFFER_SIZE + gridSize; y > BUFFER_SIZE; y--) {
-          for (let x = BUFFER_SIZE; x < BUFFER_SIZE + gridSize; x++) {
-            vg[y][x] = vg[y - 1][x];
-          }
-        }
-        for (let x = BUFFER_SIZE; x < BUFFER_SIZE + gridSize; x++) {
-          vg[BUFFER_SIZE][x] = BIN_COLOR;
-        }
-      } else if (direction === 'left') {
-        for (let y = BUFFER_SIZE; y < BUFFER_SIZE + gridSize; y++) {
-          if (vg[y][BUFFER_SIZE - 1] !== BIN_COLOR) {
-            return prev;
-          }
-        }
-        for (let y = BUFFER_SIZE; y < BUFFER_SIZE + gridSize; y++) {
-          for (let x = BUFFER_SIZE - 1; x < BUFFER_SIZE + gridSize - 1; x++) {
-            vg[y][x] = vg[y][x + 1];
-          }
-          vg[y][BUFFER_SIZE + gridSize - 1] = BIN_COLOR;
-        }
-      } else if (direction === 'right') {
-        for (let y = BUFFER_SIZE; y < BUFFER_SIZE + gridSize; y++) {
-          if (vg[y][BUFFER_SIZE + gridSize] !== BIN_COLOR) {
-            return prev;
-          }
-        }
-        for (let y = BUFFER_SIZE; y < BUFFER_SIZE + gridSize; y++) {
-          for (let x = BUFFER_SIZE + gridSize; x > BUFFER_SIZE; x--) {
-            vg[y][x] = vg[y][x - 1];
-          }
-          vg[y][BUFFER_SIZE] = BIN_COLOR;
-        }
-      }
-      // Update the main grid for editing
-      setTimeout(() => updateGridFromVirtual(vg), 0);
-      return vg;
-    });
+  // Destructive scroll toggle
+  const [destructiveScroll, setDestructiveScroll] = useState(false);
+  // Red glow state for blocked scroll
+  const [redGlow, setRedGlow] = useState(false);
+
+  // Helper to trigger red glow
+  function triggerRedGlow() {
+    setRedGlow(true);
+    setTimeout(() => setRedGlow(false), 300);
   }
 
-  // When editing, always update the virtual grid's visible area
-  React.useEffect(() => {
-    setVirtualGrid(prev => {
-      const vg = cloneGrid(prev);
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          vg[y + BUFFER_SIZE][x + BUFFER_SIZE] = grid[y][x];
-        }
-      }
-      return vg;
-    });
-  }, [grid]);
+  // Handle color change
+  function handleColorChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setColor(e.target.value);
+  }
 
   // Helper to interpolate between two hex colors
   function hexToRgb(hex: string): [number, number, number] {
@@ -376,8 +300,16 @@ export default function PixelArtGenerator() {
       </div>
       {/* Controls on the right - now split into two columns */}
       <div className={`flex flex-row gap-4 w-[36rem] p-6 bg-white/90 rounded-xl shadow-2xl border-2 border-blue-300 text-black`}>
-        {/* Left column: Color, Gradient, Shift */}
+        {/* Left column: Preview, Shift Controls, Color, Gradient */}
         <div className="flex flex-col gap-6 w-1/2">
+          {/* Preview - now at the top */}
+          <div>
+            <div className="font-bold mb-1 text-black">Preview</div>
+            <PixelArtPreview virtualGrid={board.getVirtualGrid()} gridSize={gridSize} windowPos={board.window} />
+          </div>
+          {/* Shift Controls - below preview */}
+          <PixelArtShiftControls onShift={shiftWindow} />
+          {/* Color and Gradient below shift controls */}
           <div>
             <label className="font-bold block mb-1 text-black">Color</label>
             <div className="flex gap-2 items-center">
@@ -395,7 +327,6 @@ export default function PixelArtGenerator() {
               </button>
             </div>
           </div>
-          {/* Gradient Palette */}
           <div>
             <label className="font-bold block mb-1 text-black">Gradient Palette</label>
             <div className="flex gap-2 items-center mb-2">
@@ -420,18 +351,8 @@ export default function PixelArtGenerator() {
               ))}
             </div>
           </div>
-          {/* Shift Controls - moved to left column */}
-          <div>
-            <label className="font-bold block mb-1 text-black">Shift Pixels</label>
-            <div className="flex flex-row gap-2 justify-center mt-2">
-              <button type="button" className="p-2 rounded bg-gray-100 border border-blue-300 hover:bg-blue-200" onClick={() => shiftGrid('left')} title="Shift Left">←</button>
-              <button type="button" className="p-2 rounded bg-gray-100 border border-blue-300 hover:bg-blue-200" onClick={() => shiftGrid('up')} title="Shift Up">↑</button>
-              <button type="button" className="p-2 rounded bg-gray-100 border border-blue-300 hover:bg-blue-200" onClick={() => shiftGrid('down')} title="Shift Down">↓</button>
-              <button type="button" className="p-2 rounded bg-gray-100 border border-blue-300 hover:bg-blue-200" onClick={() => shiftGrid('right')} title="Shift Right">→</button>
-            </div>
-          </div>
         </div>
-        {/* Right column: Grid size, pins, recents, actions, preview */}
+        {/* Right column: Grid size, pins, recents, actions */}
         <div className="flex flex-col gap-6 w-1/2">
           <div>
             <label className="font-bold block mb-1 text-black">Grid Size</label>
@@ -490,46 +411,6 @@ export default function PixelArtGenerator() {
           <button onClick={() => fileInputRef.current?.click()} className="px-2 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-semibold border-2 border-green-700">Load Texture</button>
           <button onClick={handleReset} className="px-2 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500 font-semibold border-2 border-yellow-600">Reset</button>
           <input type="file" accept="image/*" ref={fileInputRef} onChange={handleLoadTexture} className="hidden" />
-          {/* Preview */}
-          <div className="mt-4">
-            <div className="font-bold mb-1 text-black">Preview</div>
-            <canvas
-              ref={el => {
-                if (!el) return;
-                const size = virtualSize;
-                el.width = size;
-                el.height = size;
-                const ctx = el.getContext("2d");
-                if (!ctx) return;
-                // Draw dimmed buffer
-                for (let y = 0; y < size; y++) {
-                  for (let x = 0; x < size; x++) {
-                    ctx.fillStyle = virtualGrid[y][x] === BIN_COLOR ? '#eee' : virtualGrid[y][x] + '80';
-                    ctx.fillRect(x, y, 1, 1);
-                  }
-                }
-                // Draw visible area (not dimmed)
-                for (let y = 0; y < gridSize; y++) {
-                  for (let x = 0; x < gridSize; x++) {
-                    ctx.fillStyle = virtualGrid[y + BUFFER_SIZE][x + BUFFER_SIZE];
-                    ctx.fillRect(x + BUFFER_SIZE, y + BUFFER_SIZE, 1, 1);
-                  }
-                }
-                // Outline visible area
-                ctx.save();
-                ctx.strokeStyle = '#222';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(BUFFER_SIZE - 1 + 0.5, BUFFER_SIZE - 1 + 0.5, gridSize + 1, gridSize + 1);
-                ctx.restore();
-                // Upscale preview
-                el.style.width = '384px';
-                el.style.height = '384px';
-                el.style.imageRendering = 'pixelated';
-              }}
-              style={{ width: 384, height: 384, border: '2px solid #bbb', background: '#fff', borderRadius: 8, imageRendering: 'pixelated' }}
-              className="block mx-auto"
-            />
-          </div>
         </div>
       </div>
       <canvas ref={canvasRef} className="hidden" />
