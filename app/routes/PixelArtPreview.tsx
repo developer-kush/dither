@@ -21,6 +21,12 @@ export const PixelArtPreview: React.FC<PixelArtPreviewProps> = ({ virtualGrid, g
     // Fill background black
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, virtualSize, virtualSize);
+    // Checkerboard pattern for transparency
+    function drawChecker(x: number, y: number, alpha: number) {
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = (x + y) % 2 === 0 ? '#bbb' : '#eee';
+      ctx.fillRect(x, y, 1, 1);
+    }
     // Draw all cells
     for (let y = 0; y < virtualSize; y++) {
       for (let x = 0; x < virtualSize; x++) {
@@ -28,7 +34,10 @@ export const PixelArtPreview: React.FC<PixelArtPreviewProps> = ({ virtualGrid, g
           y >= windowPos.y && y < windowPos.y + gridSize &&
           x >= windowPos.x && x < windowPos.x + gridSize;
         const color = virtualGrid[y][x];
-        if (color === "rgba(0,0,0,0)") continue;
+        if (color === "rgba(0,0,0,0)") {
+          drawChecker(x, y, inWindow ? 1.0 : 0.5);
+          continue;
+        }
         ctx.globalAlpha = inWindow ? 1.0 : 0.5;
         ctx.fillStyle = color;
         ctx.fillRect(x, y, 1, 1);

@@ -15,7 +15,6 @@ export default function PixelArtGenerator() {
   const [recentColors, setRecentColors] = useState<string[]>([]);
   const [pinnedColors, setPinnedColors] = useState<string[]>([]);
   const [hoveredPixel, setHoveredPixel] = useState<{x: number, y: number, color: string} | null>(null);
-  const [lastTexture, setLastTexture] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -25,6 +24,9 @@ export default function PixelArtGenerator() {
   const [gradientStart, setGradientStart] = useState("#000000");
   const [gradientEnd, setGradientEnd] = useState("#ffffff");
   const [gradientSteps, setGradientSteps] = useState(5);
+
+  // Track last two uploads
+  const [lastUploads, setLastUploads] = useState<string[]>([]);
 
   // Helper to update grid from board
   function syncGrid(b: Board) {
@@ -104,16 +106,22 @@ export default function PixelArtGenerator() {
   }
 
   // Load image
-  function handleLoadTexture(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function handleLoadTexture(e: React.ChangeEvent<HTMLInputElement> | string) {
+    let file: File | undefined;
+    let url: string | undefined;
+    if (typeof e === 'string') {
+      url = e;
+    } else {
+      file = e.target.files?.[0];
+      if (!file) return;
+      url = URL.createObjectURL(file);
+      setLastUploads(prev => [url!, ...prev.filter(u => u !== url)].slice(0, 2));
+    }
     const img = new window.Image();
     img.onload = () => {
-      // Determine the best grid size for the image
       const { width, height } = img;
       let bestSize = GRID_SIZES.find(s => s === width && s === height);
       if (!bestSize) {
-        // If not exact, pick the closest allowed size
         const minDim = Math.min(width, height);
         bestSize = GRID_SIZES.reduce((prev, curr) => Math.abs(curr - minDim) < Math.abs(prev - minDim) ? curr : prev, GRID_SIZES[0]);
       }
@@ -126,68 +134,31 @@ export default function PixelArtGenerator() {
       if (!ctx) return;
       ctx.drawImage(img, 0, 0, size, size);
       const imageData = ctx.getImageData(0, 0, size, size).data;
-      const newGrid = [];
+      const newBoard = new Board(size);
       for (let y = 0; y < size; y++) {
-        const row = [];
         for (let x = 0; x < size; x++) {
           const idx = (y * size + x) * 4;
           const r = imageData[idx];
           const g = imageData[idx + 1];
           const b = imageData[idx + 2];
           const a = imageData[idx + 3];
-          if (a === 0) {
-            row.push("rgba(0,0,0,0)"); // transparent
-          } else {
-            row.push(`#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`);
-          }
+          newBoard.data[newBoard.size + y][newBoard.size + x] = a === 0 ? "rgba(0,0,0,0)" : `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
         }
-        newGrid.push(row);
       }
-      setUndoStack([]);
-      setGrid(newGrid);
-      setLastTexture(URL.createObjectURL(file));
+      newBoard.centerWindow();
+      setBoard(newBoard);
+      setGrid(newBoard.getWindow());
     };
-    img.src = URL.createObjectURL(file);
+    img.src = url!;
   }
 
-  // Reset grid to white or last texture
+  // Reset grid: center window and clear colors
   function handleReset() {
-    if (lastTexture) {
-      const img = new window.Image();
-      img.onload = () => {
-        const size = gridSize;
-        const canvas = document.createElement("canvas");
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        ctx.drawImage(img, 0, 0, size, size);
-        const imageData = ctx.getImageData(0, 0, size, size).data;
-        const newGrid = [];
-        for (let y = 0; y < size; y++) {
-          const row = [];
-          for (let x = 0; x < size; x++) {
-            const idx = (y * size + x) * 4;
-            const r = imageData[idx];
-            const g = imageData[idx + 1];
-            const b = imageData[idx + 2];
-            const a = imageData[idx + 3];
-            if (a === 0) {
-              row.push("rgba(0,0,0,0)");
-            } else {
-              row.push(`#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`);
-            }
-          }
-          newGrid.push(row);
-        }
-        setUndoStack([]);
-        setGrid(newGrid);
-      };
-      img.src = lastTexture;
-    } else {
-      setUndoStack([]);
-      setGrid(new Board(gridSize).getWindow());
-    }
+    const newBoard = new Board(gridSize);
+    newBoard.centerWindow();
+    setBoard(newBoard);
+    setGrid(newBoard.getWindow());
+    setUndoStack([]);
   }
 
   // Export as PNG
@@ -260,56 +231,67 @@ export default function PixelArtGenerator() {
   }
 
   return (
-    <div className="flex flex-row items-start justify-center w-full min-h-screen bg-gradient-to-br from-blue-100 via-pink-100 to-yellow-100 p-4 gap-8">
-      {/* Grid on the left */}
-      <div className="flex-1 flex items-center justify-center min-w-0 min-h-0">
-        <div
-          className="grid bg-gray-200 shadow-xl rounded-lg border-4 border-blue-400 relative"
-          style={{
-            gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
-            gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))`,
-            width: 'min(80vh, 80vw)',
-            height: 'min(80vh, 80vw)',
-            aspectRatio: '1/1',
-            userSelect: "none",
-            backgroundImage: 'repeating-linear-gradient(45deg, #e5e7eb 0 10px, #f3f4f6 10px 20px)',
-          }}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={() => { handleMouseUp(); setHoveredPixel(null); }}
-        >
-          {grid.map((row, y) =>
-            row.map((cell, x) => (
-              <div
-                key={`${y}-${x}`}
-                className="border border-gray-400 cursor-pointer relative group"
-                style={{ backgroundColor: cell === "rgba(0,0,0,0)" ? "transparent" : cell }}
-                onMouseDown={() => handleMouseDown(y, x)}
-                onMouseEnter={() => { handleMouseEnter(y, x); setHoveredPixel({x, y, color: cell}); }}
-                onMouseLeave={() => setHoveredPixel(null)}
-              >
-                {/* Show color hex on hover */}
-                {hoveredPixel && hoveredPixel.x === x && hoveredPixel.y === y && (
-                  <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-10 px-2 py-1 rounded bg-black text-white text-xs shadow-lg border border-white whitespace-nowrap">
-                    {cell === "rgba(0,0,0,0)" ? "TRANSPARENT" : cell.toUpperCase()}
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
+    <div className="flex flex-col items-center w-full min-h-screen bg-gradient-to-br from-blue-100 via-pink-100 to-yellow-100 p-4 gap-8 overflow-hidden">
+      {/* Preview at the top, outside the control panel */}
+      <div className="mb-6">
+        <div className="font-bold mb-1 text-black text-center">Preview</div>
+        <PixelArtPreview virtualGrid={board.getVirtualGrid()} gridSize={gridSize} windowPos={board.window} />
       </div>
-      {/* Controls on the right - now split into two columns */}
-      <div className={`flex flex-row gap-4 w-[36rem] p-6 bg-white/90 rounded-xl shadow-2xl border-2 border-blue-300 text-black`}>
-        {/* Left column: Preview, Shift Controls, Color, Gradient */}
-        <div className="flex flex-col gap-6 w-1/2">
-          {/* Preview - now at the top */}
-          <div>
-            <div className="font-bold mb-1 text-black">Preview</div>
-            <PixelArtPreview virtualGrid={board.getVirtualGrid()} gridSize={gridSize} windowPos={board.window} />
+      <div className="flex flex-row items-start justify-center w-full gap-8">
+        {/* Grid on the left */}
+        <div className="flex-1 flex items-center justify-center min-w-0 min-h-0">
+          <div
+            className="grid bg-gray-200 shadow-xl rounded-lg border-4 border-blue-400 relative"
+            style={{
+              gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))`,
+              width: 'min(80vh, 80vw)',
+              height: 'min(80vh, 80vw)',
+              aspectRatio: '1/1',
+              userSelect: "none",
+              backgroundImage: 'repeating-linear-gradient(45deg, #e5e7eb 0 10px, #f3f4f6 10px 20px)',
+            }}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={() => { handleMouseUp(); setHoveredPixel(null); }}
+          >
+            {grid.map((row, y) =>
+              row.map((cell, x) => (
+                <div
+                  key={`${y}-${x}`}
+                  className="border border-gray-400 cursor-pointer relative group"
+                  style={{ backgroundColor: cell === "rgba(0,0,0,0)" ? "transparent" : cell }}
+                  onMouseDown={() => handleMouseDown(y, x)}
+                  onMouseEnter={() => { handleMouseEnter(y, x); setHoveredPixel({x, y, color: cell}); }}
+                  onMouseLeave={() => setHoveredPixel(null)}
+                >
+                  {/* Show color hex on hover */}
+                  {hoveredPixel && hoveredPixel.x === x && hoveredPixel.y === y && (
+                    <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-10 px-2 py-1 rounded bg-black text-white text-xs shadow-lg border border-white whitespace-nowrap">
+                      {cell === "rgba(0,0,0,0)" ? "TRANSPARENT" : cell.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
-          {/* Shift Controls - below preview */}
+        </div>
+        {/* Controls on the right - just the control panel */}
+        <div className={`flex flex-col gap-4 w-[320px] p-4 bg-white/90 rounded-xl shadow-2xl border-2 border-blue-300 text-black min-h-0 overflow-y-auto max-h-[480px]`}>
           <PixelArtShiftControls onShift={shiftWindow} />
-          {/* Color and Gradient below shift controls */}
+          {/* Quick upload buttons for last two uploads */}
+          {lastUploads.length > 0 && (
+            <div>
+              <div className="font-bold mb-1 text-black">Recent Uploads</div>
+              <div className="flex gap-2">
+                {lastUploads.map((url, i) => (
+                  <button key={url} className="px-2 py-1 bg-gray-200 rounded border border-blue-300 text-xs" onClick={() => handleLoadTexture(url)}>
+                    Upload #{i + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Color and Gradient controls */}
           <div>
             <label className="font-bold block mb-1 text-black">Color</label>
             <div className="flex gap-2 items-center">
@@ -351,9 +333,7 @@ export default function PixelArtGenerator() {
               ))}
             </div>
           </div>
-        </div>
-        {/* Right column: Grid size, pins, recents, actions */}
-        <div className="flex flex-col gap-6 w-1/2">
+          {/* Grid size, pins, recents, actions */}
           <div>
             <label className="font-bold block mb-1 text-black">Grid Size</label>
             <select value={gridSize} onChange={handleGridSizeChange} className="border-2 border-blue-300 rounded px-2 py-1 w-full focus:ring-2 focus:ring-blue-400 text-black bg-white">
