@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
+import { useParams } from "react-router";
 import { PixelArtPreview } from "./PixelArtPreview";
 import { Board } from "./Board";
 import { KeyboardTrigger } from "../utils/KeyboardTrigger";
@@ -10,12 +11,21 @@ import { GameButton } from "../components/GameButton";
 import { GameIcon } from "../components/GameIcon";
 import { NavBar } from "../components/NavBar";
 import { TileList } from "../components/TileList";
+import { Toast } from "../components/Toast";
 import { useTiles } from "../hooks/useTiles";
 import { floodFill } from "../utils/floodFill";
 
 const GRID_SIZES = [8, 16, 32, 64];
 
+export function meta() {
+  return [
+    { title: "Tile Editor - Dither" },
+    { name: "description", content: "Edit and create pixel art tiles with Dither" },
+  ];
+}
+
 export default function PixelArtGenerator() {
+  const { tileId } = useParams();
   // Persistent storage for main state
   const [gridSize, setGridSize] = useLocalStorage('pixelart-gridSize', 16);
   const [board, setBoard] = usePersistentBoard('pixelart-board', gridSize);
@@ -40,11 +50,17 @@ export default function PixelArtGenerator() {
   const [brushMode, setBrushMode] = useState(false);
   const [boxStart, setBoxStart] = useState<{x: number, y: number} | null>(null);
   const [leftMenuOpen, setLeftMenuOpen] = useState(false);
-  const [currentTileName, setCurrentTileName] = useState('Untitled Tile');
-  const [currentTileId, setCurrentTileId] = useState<string | undefined>(undefined);
+  const [currentTileId, setCurrentTileId] = useState<string>(() => `tile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [currentTileName, setCurrentTileName] = useState(() => {
+    const id = `tile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `Untitled-${id.substring(id.lastIndexOf('_') + 1)}`;
+  });
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
   
   // Tile management
-  const { tiles, saveTile, deleteTile, renameTile, getTile } = useTiles();
+  const { tiles, folders, saveTile, deleteTile, renameTile, getTile, createFolder, renameFolder, deleteFolder } = useTiles();
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -101,10 +117,34 @@ export default function PixelArtGenerator() {
     setRedoStack(prev => prev.slice(0, -1));
   }, [redoStack, board]);
 
+  // Helper to show toast
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToastMessage(message);
+    setToastType(type);
+  };
+
   // Set up keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input fields
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        // Allow Ctrl+S even in input fields
+        if (e.key.toLowerCase() === 's' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          handleSaveTile();
+        }
+        return;
+      }
+      
       const key = e.key.toLowerCase();
+      
+      // Save with Ctrl/Cmd + S
+      if (key === 's' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        handleSaveTile();
+        return;
+      }
       
       // Tool cycling with F: pencil -> brush -> flood fill -> box -> pencil
       if (key === 'f') {
@@ -173,9 +213,25 @@ export default function PixelArtGenerator() {
 
   // Handle grid size change
   function handleGridSizeChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const size = parseInt(e.target.value);
-    const newBoard = new Board(size);
-    setGridSize(size);
+    const newSize = parseInt(e.target.value);
+    const oldSize = gridSize;
+    
+    // Create a new board with the new size
+    const newBoard = new Board(newSize);
+    newBoard.centerWindow();
+    
+    // Copy existing pixels from the old board to the new board
+    const oldGrid = grid;
+    for (let y = 0; y < Math.min(oldSize, newSize); y++) {
+      for (let x = 0; x < Math.min(oldSize, newSize); x++) {
+        const color = oldGrid[y]?.[x];
+        if (color && color !== "rgba(0,0,0,0)") {
+          newBoard.setPixel(y, x, color);
+        }
+      }
+    }
+    
+    setGridSize(newSize);
     setBoard(newBoard);
     setUndoStack([]);
     setRedoStack([]);
@@ -324,19 +380,33 @@ export default function PixelArtGenerator() {
     setBoard(newBoard);
     setUndoStack([]);
     setRedoStack([]);
-    setCurrentTileName('Untitled Tile');
-    setCurrentTileId(undefined);
+    const newId = `tile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    setCurrentTileId(newId);
+    setCurrentTileName(`Untitled-${newId.substring(newId.lastIndexOf('_') + 1)}`);
+    showToast('New tile created', 'info');
   }
 
   // Save current tile
   function handleSaveTile() {
-    const tileName = prompt('Enter tile name:', currentTileName);
-    if (tileName && tileName.trim()) {
-      const savedId = saveTile(tileName.trim(), grid, gridSize, currentTileId);
-      setCurrentTileName(tileName.trim());
-      if (!currentTileId && savedId) {
-        setCurrentTileId(savedId);
-      }
+    if (!currentTileId) {
+      showToast('No tile to save', 'error');
+      return;
+    }
+    
+    if (!currentTileName.trim()) {
+      showToast('Please enter a tile name', 'error');
+      return;
+    }
+    
+    // Check if tile exists in the saved tiles
+    const existingTile = tiles.find(t => t.id === currentTileId);
+    
+    saveTile(currentTileName.trim(), grid, gridSize, currentFolderId, currentTileId);
+    
+    if (!existingTile) {
+      showToast(`Tile "${currentTileName.trim()}" saved successfully!`, 'success');
+    } else {
+      showToast(`Tile "${currentTileName}" updated!`, 'success');
     }
   }
 
@@ -366,6 +436,7 @@ export default function PixelArtGenerator() {
     setCurrentTileId(tile.id);
     setUndoStack([]);
     setRedoStack([]);
+    showToast(`Loaded tile "${tile.name}"`, 'info');
   }
 
   // Export as image (supports multiple formats)
@@ -521,21 +592,6 @@ export default function PixelArtGenerator() {
       <GameMenu side="left" triggerIcon={<GameIcon type="menu" />} onOpenChange={setLeftMenuOpen}>
         <div className="h-full flex flex-col">
           <GameSection title="Tiles">
-            <div className="flex flex-col gap-2 mb-2">
-              <GameButton onClick={handleSaveTile}>
-                <div className="flex items-center gap-2">
-                  <GameIcon type="save" /> Save Tile
-                </div>
-              </GameButton>
-              <GameButton onClick={handleReset}>
-                <div className="flex items-center gap-2">
-                  <GameIcon type="reset" /> New Tile
-                </div>
-              </GameButton>
-            </div>
-            <div className="text-xs mb-2 px-1">
-              Current: <strong>{currentTileName}</strong>
-            </div>
             <TileList
               tiles={tiles}
               onLoadTile={handleLoadTile}
@@ -705,6 +761,50 @@ export default function PixelArtGenerator() {
 
       {/* Main Canvas Area */}
       <div className="w-full h-screen pt-16 flex items-center justify-center">
+        {/* Tile Info - Top Left */}
+        <div className="absolute top-20 left-8 z-10 p-3 space-y-3 min-w-[240px] bg-[var(--theme-bg-medium)] border-2 border-black" style={{ boxShadow: '4px 4px 0 #000' }}>
+          <div>
+            <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-1">Tile Name</div>
+            <input
+              type="text"
+              value={currentTileName}
+              onChange={(e) => setCurrentTileName(e.target.value)}
+              className="w-full px-2 py-1 text-sm border-2 border-black bg-[var(--theme-bg-panel)] outline-none focus:outline-none"
+              style={{ boxShadow: 'inset 2px 2px 0 rgba(0,0,0,0.1)' }}
+              placeholder="Enter tile name"
+            />
+          </div>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={handleSaveTile}
+              className="flex-1 px-3 py-1 text-xs border-2 border-black bg-[var(--theme-bg-light)] hover:bg-[var(--theme-accent)] transition-colors"
+              style={{ boxShadow: '2px 2px 0 #000' }}
+              title="Save (Ctrl+S)"
+            >
+              <div className="flex items-center justify-center gap-1">
+                <GameIcon type="save" />
+                Save
+              </div>
+            </button>
+            <button
+              onClick={handleReset}
+              className="flex-1 px-3 py-1 text-xs border-2 border-black bg-[var(--theme-bg-light)] hover:bg-[var(--theme-accent)] transition-colors"
+              style={{ boxShadow: '2px 2px 0 #000' }}
+              title="New Tile"
+            >
+              <div className="flex items-center justify-center gap-1">
+                <GameIcon type="reset" />
+                New
+              </div>
+            </button>
+          </div>
+          
+          <div className="text-[10px] opacity-60 font-mono truncate pt-1 border-t border-black/20" title={currentTileId}>
+            ID: {currentTileId.substring(currentTileId.lastIndexOf('_') + 1)}
+          </div>
+        </div>
+
         <div className="relative flex flex-row items-center gap-8">
           {/* Preview */}
           <div className="flex flex-col gap-2">
@@ -793,6 +893,15 @@ export default function PixelArtGenerator() {
 
       <input type="file" accept="image/*" ref={fileInputRef} onChange={handleLoadTexture} className="hidden" />
       <canvas ref={canvasRef} className="hidden" />
+      
+      {/* Toast Notification */}
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setToastMessage(null)}
+        />
+      )}
     </div>
   );
 }

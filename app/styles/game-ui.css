@@ -59,7 +59,7 @@
 }
 
 .game-menu.left {
-  @apply left-0 w-64 border-r-2 border-black;
+  @apply left-0 w-96 border-r-2 border-black;
   box-shadow: 4px 0 0 #000;
   transform: translateX(calc(-100% + 16px));
 }

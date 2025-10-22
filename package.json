@@ -1,5 +1,5 @@
 {
-  "name": "pixel-art-generator",
+  "name": "dither",
   "private": true,
   "type": "module",
   "scripts": {

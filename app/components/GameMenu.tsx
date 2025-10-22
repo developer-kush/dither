@@ -23,6 +23,12 @@ export const GameMenu: React.FC<GameMenuProps> = ({
     if (!keyboardShortcut) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input fields
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
       if (e.key.toLowerCase() === keyboardShortcut.toLowerCase()) {
         setIsOpen(prev => !prev);
       }
