@@ -112,6 +112,16 @@ export default function PixelArtGenerator() {
         handler: () => setFloodFillMode(prev => !prev),
         description: 'Toggle flood fill mode',
       },
+      {
+        keys: ['c', 'C'],
+        handler: () => {
+          if (hoveredPixel && hoveredPixel.color !== "rgba(0,0,0,0)") {
+            setColor(hoveredPixel.color);
+            addRecentColor(hoveredPixel.color);
+          }
+        },
+        description: 'Pick color from hovered pixel',
+      },
     ]);
 
     // Register undo/redo shortcuts
@@ -141,7 +151,7 @@ export default function PixelArtGenerator() {
     return () => {
       keyboard.destroy();
     };
-  }, [shiftWindow, handleUndo, handleRedo]); // Re-register when dependencies change
+  }, [shiftWindow, handleUndo, handleRedo, hoveredPixel]); // Re-register when dependencies change
 
   // Handle grid size change
   function handleGridSizeChange(e: React.ChangeEvent<HTMLSelectElement>) {
