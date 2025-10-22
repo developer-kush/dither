@@ -93,90 +93,80 @@ export default function PixelArtGenerator() {
 
   // Set up keyboard controls
   useEffect(() => {
-    const keyboard = new KeyboardTrigger();
-    
-    // Register arrow keys and WASD for shifting
-    keyboard.registerMultiple([
-      {
-        keys: ['ArrowUp', 'w', 'W'],
-        handler: () => shiftWindow('up'),
-        description: 'Shift viewport up',
-      },
-      {
-        keys: ['ArrowDown', 's', 'S'],
-        handler: () => shiftWindow('down'),
-        description: 'Shift viewport down',
-      },
-      {
-        keys: ['ArrowLeft', 'a', 'A'],
-        handler: () => shiftWindow('left'),
-        description: 'Shift viewport left',
-      },
-      {
-        keys: ['ArrowRight', 'd', 'D'],
-        handler: () => shiftWindow('right'),
-        description: 'Shift viewport right',
-      },
-      {
-        keys: ['f', 'F'],
-        handler: () => {
-          if (!floodFillMode && !boxMode) {
-            // From pencil to flood fill
-            setFloodFillMode(true);
-            setBoxMode(false);
-          } else if (floodFillMode) {
-            // From flood fill to box
-            setFloodFillMode(false);
-            setBoxMode(true);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      
+      // Tool cycling with F
+      if (key === 'f') {
+        e.preventDefault();
+        setFloodFillMode(prev => {
+          const currentFloodFill = prev;
+          setBoxMode(currentBox => {
+            if (!currentFloodFill && !currentBox) {
+              // From pencil to flood fill
+              return false;
+            } else if (currentFloodFill) {
+              // From flood fill to box
+              return true;
+            } else {
+              // From box back to pencil
+              return false;
+            }
+          });
+          
+          if (!currentFloodFill && !boxMode) {
+            // Going to flood fill
+            return true;
           } else {
-            // From box back to pencil
-            setFloodFillMode(false);
-            setBoxMode(false);
+            // Going to box or pencil
+            return false;
           }
-          setBoxStart(null);
-        },
-        description: 'Cycle through tools',
-      },
-      {
-        keys: ['c', 'C'],
-        handler: () => {
-          if (hoveredPixel) {
-            setColor(hoveredPixel.color);
-            addRecentColor(hoveredPixel.color);
-          }
-        },
-        description: 'Pick color from hovered pixel',
-      },
-    ]);
-
-    // Register undo/redo shortcuts
-    keyboard.register(
-      ['z', 'Z'],
-      handleUndo,
-      { 
-        ctrlKey: true, 
-        shiftKey: false,
-        description: 'Undo last action' 
+        });
+        setBoxStart(null);
+        return;
       }
-    );
-    
-    keyboard.register(
-      ['z', 'Z'],
-      handleRedo,
-      { 
-        ctrlKey: true, 
-        shiftKey: true,
-        description: 'Redo last action' 
+      
+      // Color picker with C
+      if (key === 'c' && hoveredPixel) {
+        e.preventDefault();
+        setColor(hoveredPixel.color);
+        addRecentColor(hoveredPixel.color);
+        return;
       }
-    );
+      
+      // Movement keys
+      if (['arrowup', 'w'].includes(key)) {
+        e.preventDefault();
+        shiftWindow('up');
+      } else if (['arrowdown', 's'].includes(key)) {
+        e.preventDefault();
+        shiftWindow('down');
+      } else if (['arrowleft', 'a'].includes(key)) {
+        e.preventDefault();
+        shiftWindow('left');
+      } else if (['arrowright', 'd'].includes(key)) {
+        e.preventDefault();
+        shiftWindow('right');
+      }
+      
+      // Undo/Redo
+      if (key === 'z' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+      }
+    };
 
-    keyboard.start();
+    window.addEventListener('keydown', handleKeyDown);
 
     // Cleanup on unmount
     return () => {
-      keyboard.destroy();
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [shiftWindow, handleUndo, handleRedo, hoveredPixel]); // Re-register when dependencies change
+  }, [shiftWindow, handleUndo, handleRedo, hoveredPixel, boxMode, floodFillMode]); // Re-register when dependencies change
 
   // Handle grid size change
   function handleGridSizeChange(e: React.ChangeEvent<HTMLSelectElement>) {
