@@ -2,18 +2,41 @@
 
 A modern pixel art editor for creating and editing pixel art with keyboard controls.
 
-## Keyboard Controls
+## Features
 
+### 🎨 Persistent Storage
+All your work is automatically saved to your browser's localStorage and restored when you reload the page:
+- **Board State**: Your entire pixel art canvas is preserved
+- **Colors**: Current color, recent colors, and pinned colors
+- **Settings**: Grid size, gradient settings
+- No manual saving required - everything just works!
+
+### ⌨️ Keyboard Controls
 The pixel art generator supports extensive keyboard controls for efficient editing:
 
-### Viewport Navigation
+#### Viewport Navigation
 - **Arrow Keys** or **WASD**: Shift the viewport in any direction
   - ↑ / W: Shift viewport up
   - ↓ / S: Shift viewport down
   - ← / A: Shift viewport left
   - → / D: Shift viewport right
 
-## Features
+#### Drawing Tools
+- **F Key**: Toggle between Draw Mode and Flood Fill Mode
+  - **Draw Mode** (✏️): Click and drag to paint individual pixels
+  - **Flood Fill Mode** (🪣): Click to fill connected regions with the current color
+
+### 🪣 Flood Fill Tool
+The flood fill feature works like the "paint bucket" tool in traditional image editors:
+- Fills all connected pixels of the same color
+- Uses 4-directional connectivity (up, down, left, right)
+- Perfect for quickly filling large areas
+- Works on the current visible window
+- Toggle with **F key** or click the mode button in the UI
+
+**Tip**: Use flood fill to quickly establish base colors for your pixel art, then switch to draw mode for details!
+
+## Additional Features
 
 - 🚀 Server-side rendering
 - ⚡️ Hot Module Replacement (HMR)

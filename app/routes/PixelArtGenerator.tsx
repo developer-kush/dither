@@ -2,31 +2,42 @@ import React, { useRef, useState, useEffect, useCallback } from "react";
 import { PixelArtPreview } from "./PixelArtPreview";
 import { Board } from "./Board";
 import { KeyboardTrigger } from "../utils/KeyboardTrigger";
+import { useLocalStorage } from "../hooks/useLocalStorage";
+import { usePersistentBoard } from "../hooks/usePersistentBoard";
+import { floodFill } from "../utils/floodFill";
 
 const GRID_SIZES = [8, 16, 32, 64];
 
 export default function PixelArtGenerator() {
-  const [gridSize, setGridSize] = useState(16);
-  const [board, setBoard] = useState(() => new Board(16));
+  // Persistent storage for main state
+  const [gridSize, setGridSize] = useLocalStorage('pixelart-gridSize', 16);
+  const [board, setBoard] = usePersistentBoard('pixelart-board', gridSize);
+  const [color, setColor] = useLocalStorage('pixelart-color', "#000000");
+  const [recentColors, setRecentColors] = useLocalStorage<string[]>('pixelart-recentColors', []);
+  const [pinnedColors, setPinnedColors] = useLocalStorage<string[]>('pixelart-pinnedColors', []);
+  
+  // Gradient state (persistent)
+  const [gradientStart, setGradientStart] = useLocalStorage('pixelart-gradientStart', "#000000");
+  const [gradientEnd, setGradientEnd] = useLocalStorage('pixelart-gradientEnd', "#ffffff");
+  const [gradientSteps, setGradientSteps] = useLocalStorage('pixelart-gradientSteps', 5);
+  
+  // Non-persistent state (session-only)
   const [grid, setGrid] = useState(() => board.getWindow());
-  const [color, setColor] = useState("#000000");
   const [mouseDown, setMouseDown] = useState(false);
   const [undoStack, setUndoStack] = useState<Board[]>([]);
-  const [recentColors, setRecentColors] = useState<string[]>([]);
-  const [pinnedColors, setPinnedColors] = useState<string[]>([]);
   const [hoveredPixel, setHoveredPixel] = useState<{x: number, y: number, color: string} | null>(null);
+  const [lastUploads, setLastUploads] = useState<string[]>([]);
+  const [floodFillMode, setFloodFillMode] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const BIN_COLOR = "rgba(0,0,0,0)";
 
-  // Gradient state
-  const [gradientStart, setGradientStart] = useState("#000000");
-  const [gradientEnd, setGradientEnd] = useState("#ffffff");
-  const [gradientSteps, setGradientSteps] = useState(5);
-
-  // Track last two uploads
-  const [lastUploads, setLastUploads] = useState<string[]>([]);
+  // Sync grid with board whenever board changes
+  useEffect(() => {
+    setGrid(board.getWindow());
+  }, [board]);
 
   // Shift logic: move the window, not the pixels
   const shiftWindow = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
@@ -38,7 +49,6 @@ export default function PixelArtGenerator() {
     if (direction === 'left') newBoard.shift(-1, 0);
     if (direction === 'right') newBoard.shift(1, 0);
     setBoard(newBoard);
-    setGrid(newBoard.getWindow());
   }, [board]);
 
   // Set up keyboard controls
@@ -67,6 +77,11 @@ export default function PixelArtGenerator() {
         handler: () => shiftWindow('right'),
         description: 'Shift viewport right',
       },
+      {
+        keys: ['f', 'F'],
+        handler: () => setFloodFillMode(prev => !prev),
+        description: 'Toggle flood fill mode',
+      },
     ]);
 
     keyboard.start();
@@ -77,18 +92,12 @@ export default function PixelArtGenerator() {
     };
   }, [shiftWindow]); // Re-register when shiftWindow changes
 
-  // Helper to update grid from board
-  function syncGrid(b: Board) {
-    setGrid(b.getWindow());
-  }
-
   // Handle grid size change
   function handleGridSizeChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const size = parseInt(e.target.value);
     const newBoard = new Board(size);
     setGridSize(size);
     setBoard(newBoard);
-    setGrid(newBoard.getWindow());
     setUndoStack([]);
   }
 
@@ -107,9 +116,18 @@ export default function PixelArtGenerator() {
     const newBoard = new Board(board.size);
     newBoard.data = board.getVirtualGrid();
     newBoard.window = { ...board.window };
-    newBoard.setPixel(row, col, color);
+    
+    if (floodFillMode) {
+      // Perform flood fill on the current window
+      const currentWindow = newBoard.getWindow();
+      const filledWindow = floodFill(currentWindow, col, row, color);
+      newBoard.setWindow(filledWindow);
+    } else {
+      // Normal pixel coloring
+      newBoard.setPixel(row, col, color);
+    }
+    
     setBoard(newBoard);
-    setGrid(newBoard.getWindow());
     addRecentColor(color);
   }
 
@@ -119,7 +137,8 @@ export default function PixelArtGenerator() {
     handlePixelAction(row, col);
   }
   function handleMouseEnter(row: number, col: number) {
-    if (mouseDown) handlePixelAction(row, col);
+    // Only allow dragging in normal mode, not flood fill mode
+    if (mouseDown && !floodFillMode) handlePixelAction(row, col);
   }
   function handleMouseUp() {
     setMouseDown(false);
@@ -136,7 +155,6 @@ export default function PixelArtGenerator() {
       if (stack.length === 0) return stack;
       const prev = stack[stack.length - 1];
       setBoard(prev);
-      setGrid(prev.getWindow());
       return stack.slice(0, -1);
     });
   }
@@ -183,7 +201,6 @@ export default function PixelArtGenerator() {
       }
       newBoard.centerWindow();
       setBoard(newBoard);
-      setGrid(newBoard.getWindow());
     };
     img.src = url!;
   }
@@ -193,7 +210,6 @@ export default function PixelArtGenerator() {
     const newBoard = new Board(gridSize);
     newBoard.centerWindow();
     setBoard(newBoard);
-    setGrid(newBoard.getWindow());
     setUndoStack([]);
   }
 
@@ -294,8 +310,11 @@ export default function PixelArtGenerator() {
               row.map((cell, x) => (
                 <div
                   key={`${y}-${x}`}
-                  className="border border-gray-400 cursor-pointer relative group"
-                  style={{ backgroundColor: cell === "rgba(0,0,0,0)" ? "transparent" : cell }}
+                  className="border border-gray-400 relative group"
+                  style={{ 
+                    backgroundColor: cell === "rgba(0,0,0,0)" ? "transparent" : cell,
+                    cursor: floodFillMode ? 'crosshair' : 'pointer'
+                  }}
                   onMouseDown={() => handleMouseDown(y, x)}
                   onMouseEnter={() => { handleMouseEnter(y, x); setHoveredPixel({x, y, color: cell}); }}
                   onMouseLeave={() => setHoveredPixel(null)}
@@ -326,6 +345,21 @@ export default function PixelArtGenerator() {
               </div>
             </div>
           )}
+          {/* Flood Fill Toggle */}
+          <div>
+            <button
+              type="button"
+              className={`w-full py-2 px-4 rounded font-semibold border-2 transition ${
+                floodFillMode 
+                  ? 'bg-purple-500 text-white border-purple-700 hover:bg-purple-600' 
+                  : 'bg-gray-100 text-black border-gray-300 hover:bg-gray-200'
+              }`}
+              onClick={() => setFloodFillMode(prev => !prev)}
+              title="Toggle Flood Fill Mode (F key)"
+            >
+              {floodFillMode ? '🪣 Flood Fill: ON' : '✏️ Draw Mode'}
+            </button>
+          </div>
           {/* Color and Gradient controls */}
           <div>
             <label className="font-bold block mb-1 text-black">Color</label>
