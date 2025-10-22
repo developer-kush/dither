@@ -23,6 +23,7 @@ export const PixelArtPreview: React.FC<PixelArtPreviewProps> = ({ virtualGrid, g
     ctx.fillRect(0, 0, virtualSize, virtualSize);
     // Checkerboard pattern for transparency
     function drawChecker(x: number, y: number, alpha: number) {
+      if (ctx === null) return;
       ctx.globalAlpha = alpha;
       ctx.fillStyle = (x + y) % 2 === 0 ? '#bbb' : '#eee';
       ctx.fillRect(x, y, 1, 1);

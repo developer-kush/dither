@@ -1,7 +1,7 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { PixelArtPreview } from "./PixelArtPreview";
-import { PixelArtShiftControls } from "./PixelArtShiftControls";
 import { Board } from "./Board";
+import { KeyboardTrigger } from "../utils/KeyboardTrigger";
 
 const GRID_SIZES = [8, 16, 32, 64];
 
@@ -27,6 +27,55 @@ export default function PixelArtGenerator() {
 
   // Track last two uploads
   const [lastUploads, setLastUploads] = useState<string[]>([]);
+
+  // Shift logic: move the window, not the pixels
+  const shiftWindow = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
+    const newBoard = new Board(board.size);
+    newBoard.data = board.getVirtualGrid();
+    newBoard.window = { ...board.window };
+    if (direction === 'up') newBoard.shift(0, -1);
+    if (direction === 'down') newBoard.shift(0, 1);
+    if (direction === 'left') newBoard.shift(-1, 0);
+    if (direction === 'right') newBoard.shift(1, 0);
+    setBoard(newBoard);
+    setGrid(newBoard.getWindow());
+  }, [board]);
+
+  // Set up keyboard controls
+  useEffect(() => {
+    const keyboard = new KeyboardTrigger();
+    
+    // Register arrow keys and WASD for shifting
+    keyboard.registerMultiple([
+      {
+        keys: ['ArrowUp', 'w', 'W'],
+        handler: () => shiftWindow('up'),
+        description: 'Shift viewport up',
+      },
+      {
+        keys: ['ArrowDown', 's', 'S'],
+        handler: () => shiftWindow('down'),
+        description: 'Shift viewport down',
+      },
+      {
+        keys: ['ArrowLeft', 'a', 'A'],
+        handler: () => shiftWindow('left'),
+        description: 'Shift viewport left',
+      },
+      {
+        keys: ['ArrowRight', 'd', 'D'],
+        handler: () => shiftWindow('right'),
+        description: 'Shift viewport right',
+      },
+    ]);
+
+    keyboard.start();
+
+    // Cleanup on unmount
+    return () => {
+      keyboard.destroy();
+    };
+  }, [shiftWindow]); // Re-register when shiftWindow changes
 
   // Helper to update grid from board
   function syncGrid(b: Board) {
@@ -90,19 +139,6 @@ export default function PixelArtGenerator() {
       setGrid(prev.getWindow());
       return stack.slice(0, -1);
     });
-  }
-
-  // Shift logic: move the window, not the pixels
-  function shiftWindow(direction: 'up' | 'down' | 'left' | 'right') {
-    const newBoard = new Board(board.size);
-    newBoard.data = board.getVirtualGrid();
-    newBoard.window = { ...board.window };
-    if (direction === 'up') newBoard.shift(0, -1);
-    if (direction === 'down') newBoard.shift(0, 1);
-    if (direction === 'left') newBoard.shift(-1, 0);
-    if (direction === 'right') newBoard.shift(1, 0);
-    setBoard(newBoard);
-    setGrid(newBoard.getWindow());
   }
 
   // Load image
@@ -277,7 +313,6 @@ export default function PixelArtGenerator() {
         </div>
         {/* Controls on the right - just the control panel */}
         <div className={`flex flex-col gap-4 w-[320px] p-4 bg-white/90 rounded-xl shadow-2xl border-2 border-blue-300 text-black min-h-0 overflow-y-auto max-h-[480px]`}>
-          <PixelArtShiftControls onShift={shiftWindow} />
           {/* Quick upload buttons for last two uploads */}
           {lastUploads.length > 0 && (
             <div>

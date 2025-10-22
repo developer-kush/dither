@@ -1,8 +1,17 @@
-# Welcome to React Router!
+# Pixel Art Generator
 
-A modern, production-ready template for building full-stack React applications using React Router.
+A modern pixel art editor for creating and editing pixel art with keyboard controls.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+## Keyboard Controls
+
+The pixel art generator supports extensive keyboard controls for efficient editing:
+
+### Viewport Navigation
+- **Arrow Keys** or **WASD**: Shift the viewport in any direction
+  - ↑ / W: Shift viewport up
+  - ↓ / S: Shift viewport down
+  - ← / A: Shift viewport left
+  - → / D: Shift viewport right
 
 ## Features
 
