@@ -13,7 +13,7 @@ export const NavBar: React.FC<NavBarProps> = ({
   onLoadClick
 }) => {
   return (
-    <div className="fixed top-0 left-0 right-0 h-16 bg-[#c2e4c2] border-b-2 border-black z-40 flex items-center px-24">
+    <div className="fixed top-0 left-0 right-0 h-16 border-b-2 border-black z-40 flex items-center px-24" style={{ backgroundColor: 'var(--theme-bg-medium)' }}>
       <div className="flex gap-4">
         <GameButton onClick={onLoadClick}>
           Load Image
