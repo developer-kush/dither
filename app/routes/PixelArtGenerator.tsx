@@ -385,12 +385,12 @@ export default function PixelArtGenerator() {
             {/* Save submenu */}
             <div className="relative group/save">
               <div className="w-full px-4 py-3 hover:bg-blue-100 transition text-black flex justify-between items-center cursor-pointer">
+                <span className="text-xs">◀</span>
                 💾 Save As
-                <span className="text-xs">▶</span>
               </div>
               
-              {/* Save format submenu */}
-              <div className="absolute left-full top-0 ml-1 w-40 bg-white/95 rounded-lg shadow-2xl border-2 border-blue-400 overflow-hidden opacity-0 invisible group-hover/save:opacity-100 group-hover/save:visible transition-all duration-200 pointer-events-none group-hover/save:pointer-events-auto">
+            {/* Save format submenu */}
+            <div className="absolute right-full top-0 mr-1 w-40 bg-white/95 rounded-lg shadow-2xl border-2 border-blue-400 overflow-hidden opacity-0 invisible group-hover/save:opacity-100 group-hover/save:visible transition-all duration-200 pointer-events-none group-hover/save:pointer-events-auto">
                 <button 
                   onClick={() => handleExport('png')}
                   className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black border-b border-gray-200"
