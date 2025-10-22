@@ -35,6 +35,13 @@
   --theme-accent: #808080;
 }
 
+:root[data-theme="red"] {
+  --theme-bg-light: #cf9898;
+  --theme-bg-medium: #e4c2c2;
+  --theme-bg-panel: #f4e8e8;
+  --theme-accent: #c07a7a;
+}
+
 html,
 body {
   background-color: var(--theme-bg-light);

@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface GameIconProps {
-  type: 'pencil' | 'bucket' | 'eraser' | 'load' | 'save' | 'reset' | 'menu' | 'palette';
+  type: 'pencil' | 'bucket' | 'eraser' | 'load' | 'save' | 'reset' | 'menu' | 'palette' | 'grid';
 }
 
 export const GameIcon: React.FC<GameIconProps> = ({ type }) => {
@@ -47,6 +47,11 @@ export const GameIcon: React.FC<GameIconProps> = ({ type }) => {
     palette: (
       <svg viewBox="0 0 16 16" className="w-4 h-4">
         <path fill="currentColor" d="M2,4 L14,4 L14,12 L2,12 L2,4 M4,6 L6,6 L6,8 L4,8 L4,6 M7,6 L9,6 L9,8 L7,8 L7,6 M10,6 L12,6 L12,8 L10,8 L10,6" />
+      </svg>
+    ),
+    grid: (
+      <svg viewBox="0 0 16 16" className="w-4 h-4">
+        <path fill="currentColor" d="M2,2 L14,2 L14,14 L2,14 L2,2 M4,4 L4,6 L6,6 L6,4 L4,4 M8,4 L8,6 L10,6 L10,4 L8,4 M12,4 L12,6 L14,6 L14,4 L12,4 M4,8 L4,10 L6,10 L6,8 L4,8 M8,8 L8,10 L10,10 L10,8 L8,8 M12,8 L12,10 L14,10 L14,8 L12,8 M4,12 L4,14 L6,14 L6,12 L4,12 M8,12 L8,14 L10,14 L10,12 L8,12" />
       </svg>
     ),
   };

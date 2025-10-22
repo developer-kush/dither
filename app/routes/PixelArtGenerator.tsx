@@ -34,6 +34,8 @@ export default function PixelArtGenerator() {
   const [hoveredPixel, setHoveredPixel] = useState<{x: number, y: number, color: string} | null>(null);
   const [lastUploads, setLastUploads] = useState<string[]>([]);
   const [floodFillMode, setFloodFillMode] = useState(false);
+  const [boxMode, setBoxMode] = useState(false);
+  const [boxStart, setBoxStart] = useState<{x: number, y: number} | null>(null);
   const [leftMenuOpen, setLeftMenuOpen] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,11 +53,13 @@ export default function PixelArtGenerator() {
     let theme = 'green';
     if (leftMenuOpen) {
       theme = 'gray';
+    } else if (boxMode) {
+      theme = 'red';
     } else if (floodFillMode) {
       theme = 'blue';
     }
     document.documentElement.setAttribute('data-theme', theme);
-  }, [floodFillMode, leftMenuOpen]);
+  }, [floodFillMode, boxMode, leftMenuOpen]);
 
   // Shift logic: move the window, not the pixels
   const shiftWindow = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
@@ -180,24 +184,54 @@ export default function PixelArtGenerator() {
 
   // Handle pixel coloring (add color to recents)
   function handlePixelAction(row: number, col: number) {
-    setUndoStack(stack => [...stack, board]);
-    setRedoStack([]); // Clear redo stack when new action is performed
-    const newBoard = new Board(board.size);
-    newBoard.data = board.getVirtualGrid();
-    newBoard.window = { ...board.window };
-    
-    if (floodFillMode) {
-      // Perform flood fill on the current window
-      const currentWindow = newBoard.getWindow();
-      const filledWindow = floodFill(currentWindow, col, row, color);
-      newBoard.setWindow(filledWindow);
+    if (boxMode) {
+      if (!boxStart) {
+        // First click - set the start point
+        setBoxStart({x: col, y: row});
+      } else {
+        // Second click - draw the box
+        setUndoStack(stack => [...stack, board]);
+        setRedoStack([]); // Clear redo stack when new action is performed
+        const newBoard = new Board(board.size);
+        newBoard.data = board.getVirtualGrid();
+        newBoard.window = { ...board.window };
+        
+        // Fill the rectangular area
+        const minX = Math.min(boxStart.x, col);
+        const maxX = Math.max(boxStart.x, col);
+        const minY = Math.min(boxStart.y, row);
+        const maxY = Math.max(boxStart.y, row);
+        
+        for (let y = minY; y <= maxY; y++) {
+          for (let x = minX; x <= maxX; x++) {
+            newBoard.setPixel(y, x, color);
+          }
+        }
+        
+        setBoard(newBoard);
+        addRecentColor(color);
+        setBoxStart(null);
+      }
     } else {
-      // Normal pixel coloring
-    newBoard.setPixel(row, col, color);
+      setUndoStack(stack => [...stack, board]);
+      setRedoStack([]); // Clear redo stack when new action is performed
+      const newBoard = new Board(board.size);
+      newBoard.data = board.getVirtualGrid();
+      newBoard.window = { ...board.window };
+      
+      if (floodFillMode) {
+        // Perform flood fill on the current window
+        const currentWindow = newBoard.getWindow();
+        const filledWindow = floodFill(currentWindow, col, row, color);
+        newBoard.setWindow(filledWindow);
+      } else {
+        // Normal pixel coloring
+        newBoard.setPixel(row, col, color);
+      }
+      
+      setBoard(newBoard);
+      addRecentColor(color);
     }
-    
-    setBoard(newBoard);
-    addRecentColor(color);
   }
 
   // Mouse events for drawing
@@ -206,8 +240,8 @@ export default function PixelArtGenerator() {
     handlePixelAction(row, col);
   }
   function handleMouseEnter(row: number, col: number) {
-    // Only allow dragging in normal mode, not flood fill mode
-    if (mouseDown && !floodFillMode) handlePixelAction(row, col);
+    // Only allow dragging in normal mode, not flood fill or box mode
+    if (mouseDown && !floodFillMode && !boxMode) handlePixelAction(row, col);
   }
   function handleMouseUp() {
     setMouseDown(false);
@@ -406,8 +440,8 @@ export default function PixelArtGenerator() {
           <div className="flex flex-col gap-2">
             <GameButton
               icon
-              style={!floodFillMode ? { backgroundColor: 'var(--theme-accent)' } : {}}
-              onClick={() => setFloodFillMode(false)}
+              style={!floodFillMode && !boxMode ? { backgroundColor: 'var(--theme-accent)' } : {}}
+              onClick={() => { setFloodFillMode(false); setBoxMode(false); setBoxStart(null); }}
               title="Pencil (Draw)"
             >
               <GameIcon type="pencil" />
@@ -415,10 +449,18 @@ export default function PixelArtGenerator() {
             <GameButton
               icon
               style={floodFillMode ? { backgroundColor: 'var(--theme-accent)' } : {}}
-              onClick={() => setFloodFillMode(true)}
+              onClick={() => { setFloodFillMode(true); setBoxMode(false); setBoxStart(null); }}
               title="Flood Fill (F)"
             >
               <GameIcon type="bucket" />
+            </GameButton>
+            <GameButton
+              icon
+              style={boxMode ? { backgroundColor: 'var(--theme-accent)' } : {}}
+              onClick={() => { setBoxMode(true); setFloodFillMode(false); setBoxStart(null); }}
+              title="Box Fill"
+            >
+              <GameIcon type="grid" />
             </GameButton>
           </div>
         </GameSection>
@@ -577,10 +619,10 @@ export default function PixelArtGenerator() {
                   <div
                     key={`${y}-${x}`}
                     className="border border-black/10"
-                    style={{ 
-                      backgroundColor: cell === "rgba(0,0,0,0)" ? "transparent" : cell,
-                      cursor: floodFillMode ? 'crosshair' : 'pointer'
-                    }}
+                  style={{ 
+                    backgroundColor: cell === "rgba(0,0,0,0)" ? "transparent" : cell,
+                    cursor: boxMode ? 'crosshair' : floodFillMode ? 'crosshair' : 'pointer'
+                  }}
                     onMouseDown={() => handleMouseDown(y, x)}
                     onMouseEnter={() => { handleMouseEnter(y, x); setHoveredPixel({x, y, color: cell}); }}
                     onMouseLeave={() => setHoveredPixel(null)}
