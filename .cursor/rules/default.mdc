@@ -2,4 +2,6 @@
 alwaysApply: true
 ---
 
-1. ONLY DO THE TASK, and NEVER provide summary (no readme updates, or any action that wastes tokens)
+1. after every response say, ">> default.mdc"
+2. ONLY DO THE TASK, and NEVER provide summary (no readme updates, no summary in chat)
+3. commit all the changes as the cursor user. in the form f"cursor >> feat: <summary>"
