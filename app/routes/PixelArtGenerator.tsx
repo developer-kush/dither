@@ -602,6 +602,13 @@ export default function PixelArtGenerator() {
 
           {/* Canvas */}
           <div className="relative">
+            {/* Fixed color tooltip */}
+            {hoveredPixel && (
+              <div className="absolute left-1/2 -translate-x-1/2 -top-12 z-10 game-button whitespace-nowrap">
+                {hoveredPixel.color === "rgba(0,0,0,0)" ? "TRANSPARENT" : hoveredPixel.color.toUpperCase()}
+              </div>
+            )}
+            
             <div
               className="game-border"
               style={{
@@ -642,13 +649,7 @@ export default function PixelArtGenerator() {
                     onMouseEnter={() => { handleMouseEnter(y, x); setHoveredPixel({x, y, color: cell}); }}
                     onMouseLeave={() => setHoveredPixel(null)}
                     onMouseUp={() => handleMouseUp(y, x)}
-                  >
-                    {hoveredPixel && hoveredPixel.x === x && hoveredPixel.y === y && (
-                      <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-10 game-button whitespace-nowrap">
-                        {cell === "rgba(0,0,0,0)" ? "TRANSPARENT" : cell.toUpperCase()}
-                      </div>
-                    )}
-                  </div>
+                  />
                 ))
               )}
             </div>
