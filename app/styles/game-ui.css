@@ -86,7 +86,13 @@
 }
 
 .game-menu-content {
-  @apply h-full p-4 flex flex-col gap-4;
+  @apply h-full p-4 flex flex-col gap-4 max-h-screen;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.game-menu-content::-webkit-scrollbar {
+  display: none;
 }
 
 .game-section {

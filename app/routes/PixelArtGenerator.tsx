@@ -7,6 +7,7 @@ import { usePersistentBoard } from "../hooks/usePersistentBoard";
 import { GameMenu } from "../components/GameMenu";
 import { GameSection } from "../components/GameSection";
 import { GameButton } from "../components/GameButton";
+import { GameIcon } from "../components/GameIcon";
 import { floodFill } from "../utils/floodFill";
 
 const GRID_SIZES = [8, 16, 32, 64];
@@ -369,12 +370,14 @@ export default function PixelArtGenerator() {
   return (
     <div className="w-full min-h-screen relative">
       {/* Left Menu - Tiles */}
-      <GameMenu side="left" triggerIcon="≡">
-        {/* Empty for now */}
+      <GameMenu side="left" triggerIcon={<GameIcon type="menu" />}>
+        <div className="h-full">
+          {/* Empty for now */}
+        </div>
       </GameMenu>
 
       {/* Right Menu - Tools & Colors */}
-      <GameMenu side="right" triggerIcon="🎨" keyboardShortcut="b">
+      <GameMenu side="right" triggerIcon={<GameIcon type="palette" />} keyboardShortcut="b">
         {/* Tools Section */}
         <GameSection title="Tools">
           <div className="flex flex-col gap-2">
@@ -384,7 +387,7 @@ export default function PixelArtGenerator() {
               onClick={() => setFloodFillMode(prev => !prev)}
               title="Flood Fill (F)"
             >
-              {floodFillMode ? '🪣' : '✏️'}
+              <GameIcon type={floodFillMode ? 'bucket' : 'pencil'} />
             </GameButton>
           </div>
         </GameSection>
@@ -404,7 +407,7 @@ export default function PixelArtGenerator() {
               onClick={() => setColor(BIN_COLOR)}
               title="Transparent"
             >
-              ❌
+              <GameIcon type="eraser" />
             </GameButton>
           </div>
         </GameSection>
@@ -511,13 +514,19 @@ export default function PixelArtGenerator() {
         <GameSection title="Actions">
           <div className="flex flex-col gap-2">
             <GameButton onClick={() => fileInputRef.current?.click()}>
-              📂 Load Image
+              <div className="flex items-center gap-2">
+                <GameIcon type="load" /> Load Image
+              </div>
             </GameButton>
             <GameButton onClick={() => handleExport('png')}>
-              💾 Save PNG
+              <div className="flex items-center gap-2">
+                <GameIcon type="save" /> Save PNG
+              </div>
             </GameButton>
             <GameButton onClick={handleReset}>
-              🔄 Reset
+              <div className="flex items-center gap-2">
+                <GameIcon type="reset" /> Reset
+              </div>
             </GameButton>
           </div>
         </GameSection>
@@ -525,11 +534,18 @@ export default function PixelArtGenerator() {
 
       {/* Main Canvas Area */}
       <div className="w-full h-screen flex items-center justify-center">
-        <div className="relative">
-          {/* Size indicator */}
-          <div className="absolute -bottom-8 right-0 game-button">
-            {gridSize}x{gridSize}
+        <div className="relative flex flex-col items-center gap-8">
+          {/* Preview */}
+          <div className="game-border bg-[#e8f4e8] p-2">
+        <PixelArtPreview virtualGrid={board.getVirtualGrid()} gridSize={gridSize} windowPos={board.window} />
       </div>
+
+          {/* Main Canvas */}
+          <div className="relative">
+            {/* Size indicator */}
+            <div className="absolute -bottom-8 right-0 game-button">
+              {gridSize}x{gridSize}
+            </div>
 
           {/* Canvas */}
           <div
@@ -568,6 +584,7 @@ export default function PixelArtGenerator() {
               ))
             )}
           </div>
+        </div>
         </div>
       </div>
 

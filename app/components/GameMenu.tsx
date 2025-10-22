@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 interface GameMenuProps {
   side: 'left' | 'right';
-  triggerIcon: string;
+  triggerIcon: React.ReactNode;
   children: React.ReactNode;
   keyboardShortcut?: string;
 }
@@ -52,7 +52,7 @@ export const GameMenu: React.FC<GameMenuProps> = ({
       <div className="game-menu-trigger">
         {triggerIcon}
       </div>
-      <div className="game-menu-content">
+      <div className="game-menu-content overflow-y-auto">
         {children}
       </div>
     </div>
