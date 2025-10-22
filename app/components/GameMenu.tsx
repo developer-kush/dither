@@ -5,13 +5,15 @@ interface GameMenuProps {
   triggerIcon: React.ReactNode;
   children: React.ReactNode;
   keyboardShortcut?: string;
+  onOpenChange?: (isOpen: boolean) => void;
 }
 
 export const GameMenu: React.FC<GameMenuProps> = ({ 
   side, 
   triggerIcon, 
   children,
-  keyboardShortcut
+  keyboardShortcut,
+  onOpenChange
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -38,6 +40,13 @@ export const GameMenu: React.FC<GameMenuProps> = ({
       setIsOpen(false);
     }
   }, [isHovered]);
+
+  // Notify parent of open state changes
+  useEffect(() => {
+    if (onOpenChange) {
+      onOpenChange(isOpen);
+    }
+  }, [isOpen, onOpenChange]);
 
   return (
     <div 

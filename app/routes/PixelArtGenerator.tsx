@@ -34,6 +34,7 @@ export default function PixelArtGenerator() {
   const [hoveredPixel, setHoveredPixel] = useState<{x: number, y: number, color: string} | null>(null);
   const [lastUploads, setLastUploads] = useState<string[]>([]);
   const [floodFillMode, setFloodFillMode] = useState(false);
+  const [leftMenuOpen, setLeftMenuOpen] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -45,11 +46,16 @@ export default function PixelArtGenerator() {
     setGrid(board.getWindow());
   }, [board]);
 
-  // Update theme based on tool mode
+  // Update theme based on tool mode and menu state
   useEffect(() => {
-    const theme = floodFillMode ? 'blue' : 'green';
+    let theme = 'green';
+    if (leftMenuOpen) {
+      theme = 'gray';
+    } else if (floodFillMode) {
+      theme = 'blue';
+    }
     document.documentElement.setAttribute('data-theme', theme);
-  }, [floodFillMode]);
+  }, [floodFillMode, leftMenuOpen]);
 
   // Shift logic: move the window, not the pixels
   const shiftWindow = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
@@ -387,7 +393,7 @@ export default function PixelArtGenerator() {
   return (
     <div className="w-full min-h-screen relative">
       {/* Left Menu - Tiles */}
-      <GameMenu side="left" triggerIcon={<GameIcon type="menu" />}>
+      <GameMenu side="left" triggerIcon={<GameIcon type="menu" />} onOpenChange={setLeftMenuOpen}>
         <div className="h-full">
           {/* Empty for now */}
         </div>

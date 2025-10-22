@@ -28,6 +28,13 @@
   --theme-accent: #7a9cc0;
 }
 
+:root[data-theme="gray"] {
+  --theme-bg-light: #a0a0a0;
+  --theme-bg-medium: #c8c8c8;
+  --theme-bg-panel: #e8e8e8;
+  --theme-accent: #808080;
+}
+
 html,
 body {
   background-color: var(--theme-bg-light);
