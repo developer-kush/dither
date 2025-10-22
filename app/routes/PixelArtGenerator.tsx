@@ -332,9 +332,11 @@ export default function PixelArtGenerator() {
   function handleSaveTile() {
     const tileName = prompt('Enter tile name:', currentTileName);
     if (tileName && tileName.trim()) {
-      saveTile(tileName.trim(), grid, gridSize, currentTileId);
+      const savedId = saveTile(tileName.trim(), grid, gridSize, currentTileId);
       setCurrentTileName(tileName.trim());
-      // If saving a new tile, we don't know the ID yet, but it will be generated
+      if (!currentTileId && savedId) {
+        setCurrentTileId(savedId);
+      }
     }
   }
 

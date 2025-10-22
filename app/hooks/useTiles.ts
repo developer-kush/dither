@@ -39,7 +39,7 @@ export function useTiles() {
     }
   }, [tiles, isLoaded]);
 
-  const saveTile = (name: string, grid: string[][], size: number, existingId?: string) => {
+  const saveTile = (name: string, grid: string[][], size: number, existingId?: string): string => {
     const now = Date.now();
     
     if (existingId) {
@@ -49,6 +49,7 @@ export function useTiles() {
           ? { ...tile, name, grid, size, updatedAt: now }
           : tile
       ));
+      return existingId;
     } else {
       // Create new tile
       const newTile: Tile = {
@@ -60,6 +61,7 @@ export function useTiles() {
         updatedAt: now,
       };
       setTiles(prev => [...prev, newTile]);
+      return newTile.id;
     }
   };
 
