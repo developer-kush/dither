@@ -9,6 +9,8 @@ import { GameSection } from "../components/GameSection";
 import { GameButton } from "../components/GameButton";
 import { GameIcon } from "../components/GameIcon";
 import { NavBar } from "../components/NavBar";
+import { TileList } from "../components/TileList";
+import { useTiles } from "../hooks/useTiles";
 import { floodFill } from "../utils/floodFill";
 
 const GRID_SIZES = [8, 16, 32, 64];
@@ -38,6 +40,11 @@ export default function PixelArtGenerator() {
   const [brushMode, setBrushMode] = useState(false);
   const [boxStart, setBoxStart] = useState<{x: number, y: number} | null>(null);
   const [leftMenuOpen, setLeftMenuOpen] = useState(false);
+  const [currentTileName, setCurrentTileName] = useState('Untitled Tile');
+  const [currentTileId, setCurrentTileId] = useState<string | undefined>(undefined);
+  
+  // Tile management
+  const { tiles, saveTile, deleteTile, renameTile, getTile } = useTiles();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -317,6 +324,46 @@ export default function PixelArtGenerator() {
     setBoard(newBoard);
     setUndoStack([]);
     setRedoStack([]);
+    setCurrentTileName('Untitled Tile');
+    setCurrentTileId(undefined);
+  }
+
+  // Save current tile
+  function handleSaveTile() {
+    const tileName = prompt('Enter tile name:', currentTileName);
+    if (tileName && tileName.trim()) {
+      saveTile(tileName.trim(), grid, gridSize, currentTileId);
+      setCurrentTileName(tileName.trim());
+      // If saving a new tile, we don't know the ID yet, but it will be generated
+    }
+  }
+
+  // Load a tile
+  function handleLoadTile(tile: typeof tiles[0]) {
+    // Set the grid size if different
+    if (tile.size !== gridSize) {
+      setGridSize(tile.size);
+    }
+    
+    // Create a new board with the tile data
+    const newBoard = new Board(tile.size);
+    newBoard.centerWindow();
+    
+    // Load the tile grid into the board
+    const window = newBoard.getWindow();
+    for (let y = 0; y < tile.size; y++) {
+      for (let x = 0; x < tile.size; x++) {
+        if (tile.grid[y] && tile.grid[y][x]) {
+          newBoard.setPixel(y, x, tile.grid[y][x]);
+        }
+      }
+    }
+    
+    setBoard(newBoard);
+    setCurrentTileName(tile.name);
+    setCurrentTileId(tile.id);
+    setUndoStack([]);
+    setRedoStack([]);
   }
 
   // Export as image (supports multiple formats)
@@ -470,8 +517,31 @@ export default function PixelArtGenerator() {
     <div className="w-full min-h-screen relative">
       {/* Left Menu - Tiles */}
       <GameMenu side="left" triggerIcon={<GameIcon type="menu" />} onOpenChange={setLeftMenuOpen}>
-        <div className="h-full">
-          {/* Empty for now */}
+        <div className="h-full flex flex-col">
+          <GameSection title="Tiles">
+            <div className="flex flex-col gap-2 mb-2">
+              <GameButton onClick={handleSaveTile}>
+                <div className="flex items-center gap-2">
+                  <GameIcon type="save" /> Save Tile
+                </div>
+              </GameButton>
+              <GameButton onClick={handleReset}>
+                <div className="flex items-center gap-2">
+                  <GameIcon type="reset" /> New Tile
+                </div>
+              </GameButton>
+            </div>
+            <div className="text-xs mb-2 px-1">
+              Current: <strong>{currentTileName}</strong>
+            </div>
+            <TileList
+              tiles={tiles}
+              onLoadTile={handleLoadTile}
+              onDeleteTile={deleteTile}
+              onRenameTile={renameTile}
+              currentTileId={currentTileId}
+            />
+          </GameSection>
         </div>
       </GameMenu>
 
