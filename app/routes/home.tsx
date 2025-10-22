@@ -57,6 +57,20 @@ export default function Home() {
         <div className="mt-12 text-sm text-gray-500">
           <p>Draw • Paint • Blend • Fill • Export</p>
         </div>
+        
+        <div className="mt-8 text-xs text-gray-600">
+          <p>
+            Made by{' '}
+            <a 
+              href="https://devkush.vercel.app" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="underline hover:text-gray-400 transition-colors"
+            >
+              Kushagra Agarwal
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );
