@@ -185,65 +185,68 @@ export default function PixelArtGenerator() {
   // Handle pixel coloring (add color to recents)
   function handlePixelAction(row: number, col: number) {
     if (boxMode) {
-      if (!boxStart) {
-        // First click - set the start point
-        setBoxStart({x: col, y: row});
-      } else {
-        // Second click - draw the box
-        setUndoStack(stack => [...stack, board]);
-        setRedoStack([]); // Clear redo stack when new action is performed
-        const newBoard = new Board(board.size);
-        newBoard.data = board.getVirtualGrid();
-        newBoard.window = { ...board.window };
-        
-        // Fill the rectangular area
-        const minX = Math.min(boxStart.x, col);
-        const maxX = Math.max(boxStart.x, col);
-        const minY = Math.min(boxStart.y, row);
-        const maxY = Math.max(boxStart.y, row);
-        
-        for (let y = minY; y <= maxY; y++) {
-          for (let x = minX; x <= maxX; x++) {
-            newBoard.setPixel(y, x, color);
-          }
-        }
-        
-        setBoard(newBoard);
-        addRecentColor(color);
-        setBoxStart(null);
-      }
+      // Box mode is handled in mouse down/up, not here
+      return;
+    }
+    
+    setUndoStack(stack => [...stack, board]);
+    setRedoStack([]); // Clear redo stack when new action is performed
+    const newBoard = new Board(board.size);
+    newBoard.data = board.getVirtualGrid();
+    newBoard.window = { ...board.window };
+    
+    if (floodFillMode) {
+      // Perform flood fill on the current window
+      const currentWindow = newBoard.getWindow();
+      const filledWindow = floodFill(currentWindow, col, row, color);
+      newBoard.setWindow(filledWindow);
     } else {
+      // Normal pixel coloring
+      newBoard.setPixel(row, col, color);
+    }
+    
+    setBoard(newBoard);
+    addRecentColor(color);
+  }
+
+  // Mouse events for drawing
+  function handleMouseDown(row: number, col: number) {
+    setMouseDown(true);
+    if (boxMode) {
+      setBoxStart({x: col, y: row});
+    } else {
+      handlePixelAction(row, col);
+    }
+  }
+  function handleMouseEnter(row: number, col: number) {
+    // Only allow dragging in normal mode, not flood fill or box mode
+    if (mouseDown && !floodFillMode && !boxMode) handlePixelAction(row, col);
+  }
+  function handleMouseUp(row: number, col: number) {
+    if (boxMode && boxStart && mouseDown) {
+      // Complete the box fill
       setUndoStack(stack => [...stack, board]);
       setRedoStack([]); // Clear redo stack when new action is performed
       const newBoard = new Board(board.size);
       newBoard.data = board.getVirtualGrid();
       newBoard.window = { ...board.window };
       
-      if (floodFillMode) {
-        // Perform flood fill on the current window
-        const currentWindow = newBoard.getWindow();
-        const filledWindow = floodFill(currentWindow, col, row, color);
-        newBoard.setWindow(filledWindow);
-      } else {
-        // Normal pixel coloring
-        newBoard.setPixel(row, col, color);
+      // Fill the rectangular area
+      const minX = Math.min(boxStart.x, col);
+      const maxX = Math.max(boxStart.x, col);
+      const minY = Math.min(boxStart.y, row);
+      const maxY = Math.max(boxStart.y, row);
+      
+      for (let y = minY; y <= maxY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+          newBoard.setPixel(y, x, color);
+        }
       }
       
       setBoard(newBoard);
       addRecentColor(color);
+      setBoxStart(null);
     }
-  }
-
-  // Mouse events for drawing
-  function handleMouseDown(row: number, col: number) {
-    setMouseDown(true);
-    handlePixelAction(row, col);
-  }
-  function handleMouseEnter(row: number, col: number) {
-    // Only allow dragging in normal mode, not flood fill or box mode
-    if (mouseDown && !floodFillMode && !boxMode) handlePixelAction(row, col);
-  }
-  function handleMouseUp() {
     setMouseDown(false);
   }
 
@@ -611,21 +614,34 @@ export default function PixelArtGenerator() {
                 aspectRatio: '1/1',
                 userSelect: "none",
               }}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={() => { handleMouseUp(); setHoveredPixel(null); }}
+              onMouseLeave={() => { 
+                if (boxMode && boxStart && mouseDown) {
+                  setBoxStart(null);
+                }
+                setMouseDown(false);
+                setHoveredPixel(null); 
+              }}
             >
               {grid.map((row, y) =>
                 row.map((cell, x) => (
                   <div
                     key={`${y}-${x}`}
-                    className="border border-black/10"
-                  style={{ 
-                    backgroundColor: cell === "rgba(0,0,0,0)" ? "transparent" : cell,
-                    cursor: boxMode ? 'crosshair' : floodFillMode ? 'crosshair' : 'pointer'
-                  }}
+                    className="border border-black/10 relative"
+                    style={{ 
+                      backgroundColor: cell === "rgba(0,0,0,0)" ? "transparent" : cell,
+                      cursor: boxMode ? 'crosshair' : floodFillMode ? 'crosshair' : 'pointer',
+                      outline: boxMode && boxStart && mouseDown && 
+                        x >= Math.min(boxStart.x, hoveredPixel?.x ?? boxStart.x) && 
+                        x <= Math.max(boxStart.x, hoveredPixel?.x ?? boxStart.x) &&
+                        y >= Math.min(boxStart.y, hoveredPixel?.y ?? boxStart.y) && 
+                        y <= Math.max(boxStart.y, hoveredPixel?.y ?? boxStart.y)
+                        ? '2px solid rgba(255, 100, 100, 0.8)' : 'none',
+                      outlineOffset: '-2px'
+                    }}
                     onMouseDown={() => handleMouseDown(y, x)}
                     onMouseEnter={() => { handleMouseEnter(y, x); setHoveredPixel({x, y, color: cell}); }}
                     onMouseLeave={() => setHoveredPixel(null)}
+                    onMouseUp={() => handleMouseUp(y, x)}
                   >
                     {hoveredPixel && hoveredPixel.x === x && hoveredPixel.y === y && (
                       <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-10 game-button whitespace-nowrap">
