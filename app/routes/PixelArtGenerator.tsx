@@ -35,6 +35,7 @@ export default function PixelArtGenerator() {
   const [lastUploads, setLastUploads] = useState<string[]>([]);
   const [floodFillMode, setFloodFillMode] = useState(false);
   const [boxMode, setBoxMode] = useState(false);
+  const [brushMode, setBrushMode] = useState(false);
   const [boxStart, setBoxStart] = useState<{x: number, y: number} | null>(null);
   const [leftMenuOpen, setLeftMenuOpen] = useState(false);
   
@@ -53,13 +54,15 @@ export default function PixelArtGenerator() {
     let theme = 'green';
     if (leftMenuOpen) {
       theme = 'gray';
+    } else if (brushMode) {
+      theme = 'yellow';
     } else if (boxMode) {
       theme = 'red';
     } else if (floodFillMode) {
       theme = 'blue';
     }
     document.documentElement.setAttribute('data-theme', theme);
-  }, [floodFillMode, boxMode, leftMenuOpen]);
+  }, [floodFillMode, boxMode, brushMode, leftMenuOpen]);
 
   // Shift logic: move the window, not the pixels
   const shiftWindow = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
@@ -96,32 +99,25 @@ export default function PixelArtGenerator() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
       
-      // Tool cycling with F
+      // Tool cycling with F: pencil -> brush -> flood fill -> box -> pencil
       if (key === 'f') {
         e.preventDefault();
-        setFloodFillMode(prev => {
-          const currentFloodFill = prev;
-          setBoxMode(currentBox => {
-            if (!currentFloodFill && !currentBox) {
-              // From pencil to flood fill
-              return false;
-            } else if (currentFloodFill) {
-              // From flood fill to box
-              return true;
-            } else {
-              // From box back to pencil
-              return false;
-            }
-          });
-          
-          if (!currentFloodFill && !boxMode) {
-            // Going to flood fill
-            return true;
-          } else {
-            // Going to box or pencil
-            return false;
-          }
-        });
+        
+        if (!floodFillMode && !boxMode && !brushMode) {
+          // From pencil to brush
+          setBrushMode(true);
+        } else if (brushMode) {
+          // From brush to flood fill
+          setBrushMode(false);
+          setFloodFillMode(true);
+        } else if (floodFillMode) {
+          // From flood fill to box
+          setFloodFillMode(false);
+          setBoxMode(true);
+        } else {
+          // From box back to pencil
+          setBoxMode(false);
+        }
         setBoxStart(null);
         return;
       }
@@ -166,7 +162,7 @@ export default function PixelArtGenerator() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [shiftWindow, handleUndo, handleRedo, hoveredPixel, boxMode, floodFillMode]); // Re-register when dependencies change
+  }, [shiftWindow, handleUndo, handleRedo, hoveredPixel, boxMode, floodFillMode, brushMode]); // Re-register when dependencies change
 
   // Handle grid size change
   function handleGridSizeChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -205,13 +201,21 @@ export default function PixelArtGenerator() {
       const currentWindow = newBoard.getWindow();
       const filledWindow = floodFill(currentWindow, col, row, color);
       newBoard.setWindow(filledWindow);
+    } else if (brushMode) {
+      // Brush mode - blend colors
+      const currentColor = grid[row][col];
+      const blendedColor = blendColors(currentColor, color);
+      newBoard.setPixel(row, col, blendedColor);
+      addRecentColor(blendedColor);
     } else {
       // Normal pixel coloring
       newBoard.setPixel(row, col, color);
     }
     
     setBoard(newBoard);
-    addRecentColor(color);
+    if (!brushMode) {
+      addRecentColor(color);
+    }
   }
 
   // Mouse events for drawing
@@ -224,7 +228,7 @@ export default function PixelArtGenerator() {
     }
   }
   function handleMouseEnter(row: number, col: number) {
-    // Only allow dragging in normal mode, not flood fill or box mode
+    // Allow dragging in normal mode and brush mode, not flood fill or box mode
     if (mouseDown && !floodFillMode && !boxMode) handlePixelAction(row, col);
   }
   function handleMouseUp(row: number, col: number) {
@@ -405,6 +409,36 @@ export default function PixelArtGenerator() {
     setColor(e.target.value);
   }
 
+  // Helper to blend two colors (mix newColor into baseColor with 20% strength)
+  function blendColors(baseColor: string, newColor: string, strength: number = 0.2): string {
+    // Handle transparent base color
+    if (baseColor === "rgba(0,0,0,0)") {
+      // Blend transparent with the new color at lower opacity
+      const rgb = hexToRgb(newColor);
+      return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${strength})`;
+    }
+    
+    // Parse colors
+    const base = baseColor.startsWith('rgba') ? parseRgba(baseColor) : hexToRgb(baseColor);
+    const blend = newColor === "rgba(0,0,0,0)" ? [0, 0, 0] : hexToRgb(newColor);
+    
+    // Mix colors
+    const mixed: [number, number, number] = [
+      Math.round(base[0] * (1 - strength) + blend[0] * strength),
+      Math.round(base[1] * (1 - strength) + blend[1] * strength),
+      Math.round(base[2] * (1 - strength) + blend[2] * strength)
+    ];
+    
+    return rgbToHex(mixed);
+  }
+  
+  // Helper to parse rgba string
+  function parseRgba(rgba: string): [number, number, number] {
+    const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!match) return [0, 0, 0];
+    return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
+  }
+
   // Helper to interpolate between two hex colors
   function hexToRgb(hex: string): [number, number, number] {
     hex = hex.replace(/^#/, "");
@@ -445,19 +479,27 @@ export default function PixelArtGenerator() {
       <GameMenu side="right" triggerIcon={<GameIcon type="palette" />} keyboardShortcut="b">
         {/* Tools Section */}
         <GameSection title="Tools">
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-row gap-2">
             <GameButton
               icon
-              style={!floodFillMode && !boxMode ? { backgroundColor: 'var(--theme-accent)' } : {}}
-              onClick={() => { setFloodFillMode(false); setBoxMode(false); setBoxStart(null); }}
+              style={!floodFillMode && !boxMode && !brushMode ? { backgroundColor: 'var(--theme-accent)' } : {}}
+              onClick={() => { setFloodFillMode(false); setBoxMode(false); setBrushMode(false); setBoxStart(null); }}
               title="Pencil (Draw)"
             >
               <GameIcon type="pencil" />
             </GameButton>
             <GameButton
               icon
+              style={brushMode ? { backgroundColor: 'var(--theme-accent)' } : {}}
+              onClick={() => { setBrushMode(true); setFloodFillMode(false); setBoxMode(false); setBoxStart(null); }}
+              title="Brush (Blend)"
+            >
+              <GameIcon type="brush" />
+            </GameButton>
+            <GameButton
+              icon
               style={floodFillMode ? { backgroundColor: 'var(--theme-accent)' } : {}}
-              onClick={() => { setFloodFillMode(true); setBoxMode(false); setBoxStart(null); }}
+              onClick={() => { setFloodFillMode(true); setBoxMode(false); setBrushMode(false); setBoxStart(null); }}
               title="Flood Fill (F)"
             >
               <GameIcon type="bucket" />
@@ -465,7 +507,7 @@ export default function PixelArtGenerator() {
             <GameButton
               icon
               style={boxMode ? { backgroundColor: 'var(--theme-accent)' } : {}}
-              onClick={() => { setBoxMode(true); setFloodFillMode(false); setBoxStart(null); }}
+              onClick={() => { setBoxMode(true); setFloodFillMode(false); setBrushMode(false); setBoxStart(null); }}
               title="Box Fill"
             >
               <GameIcon type="grid" />
