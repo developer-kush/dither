@@ -119,8 +119,23 @@ export default function PixelArtGenerator() {
       },
       {
         keys: ['f', 'F'],
-        handler: () => setFloodFillMode(prev => !prev),
-        description: 'Toggle flood fill mode',
+        handler: () => {
+          if (!floodFillMode && !boxMode) {
+            // From pencil to flood fill
+            setFloodFillMode(true);
+            setBoxMode(false);
+          } else if (floodFillMode) {
+            // From flood fill to box
+            setFloodFillMode(false);
+            setBoxMode(true);
+          } else {
+            // From box back to pencil
+            setFloodFillMode(false);
+            setBoxMode(false);
+          }
+          setBoxStart(null);
+        },
+        description: 'Cycle through tools',
       },
       {
         keys: ['c', 'C'],
