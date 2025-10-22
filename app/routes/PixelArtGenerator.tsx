@@ -115,7 +115,7 @@ export default function PixelArtGenerator() {
       {
         keys: ['c', 'C'],
         handler: () => {
-          if (hoveredPixel && hoveredPixel.color !== "rgba(0,0,0,0)") {
+          if (hoveredPixel) {
             setColor(hoveredPixel.color);
             addRecentColor(hoveredPixel.color);
           }
@@ -163,9 +163,9 @@ export default function PixelArtGenerator() {
     setRedoStack([]);
   }
 
-  // Add color to recent colors (if not already present, and not transparent)
+  // Add color to recent colors (if not already present)
   function addRecentColor(newColor: string) {
-    if (newColor === "rgba(0,0,0,0)" || newColor === "#ffffff") return;
+    if (newColor === "#ffffff") return;
     setRecentColors(prev => {
       const filtered = prev.filter(c => c !== newColor);
       return [newColor, ...filtered].slice(0, 20);
