@@ -1,0 +1,100 @@
+/* Game UI Styles */
+.game-border {
+  @apply border-2 border-black;
+  box-shadow: 4px 4px 0 #000;
+}
+
+.game-panel {
+  @apply bg-[#c2e4c2] border-2 border-black p-4;
+  box-shadow: inset 2px 2px 0 rgba(255,255,255,0.2),
+              inset -2px -2px 0 rgba(0,0,0,0.2);
+}
+
+.game-button {
+  @apply bg-[#98cf98] border-2 border-black px-4 py-2 transition-all;
+  box-shadow: inset 2px 2px 0 rgba(255,255,255,0.2),
+              inset -2px -2px 0 rgba(0,0,0,0.2),
+              2px 2px 0 #000;
+}
+
+.game-button:hover {
+  @apply bg-[#7ac07a];
+}
+
+.game-button:active {
+  @apply translate-x-[2px] translate-y-[2px];
+  box-shadow: inset 2px 2px 0 rgba(255,255,255,0.2),
+              inset -2px -2px 0 rgba(0,0,0,0.2);
+}
+
+.game-icon-button {
+  @apply w-12 h-12 flex items-center justify-center bg-[#98cf98] border-2 border-black transition-all;
+  box-shadow: inset 2px 2px 0 rgba(255,255,255,0.2),
+              inset -2px -2px 0 rgba(0,0,0,0.2),
+              2px 2px 0 #000;
+}
+
+.game-icon-button:hover {
+  @apply bg-[#7ac07a];
+}
+
+.game-icon-button:active {
+  @apply translate-x-[2px] translate-y-[2px];
+  box-shadow: inset 2px 2px 0 rgba(255,255,255,0.2),
+              inset -2px -2px 0 rgba(0,0,0,0.2);
+}
+
+.game-input {
+  @apply bg-[#e8f4e8] border-2 border-black px-3 py-1;
+  box-shadow: inset 2px 2px 0 rgba(0,0,0,0.1);
+}
+
+.game-menu {
+  @apply fixed top-0 bottom-0 bg-[#c2e4c2] border-r-2 border-black transition-all duration-200 z-50;
+  box-shadow: 4px 0 0 #000;
+}
+
+.game-menu.left {
+  @apply left-0 w-16;
+  transform: translateX(-100%);
+}
+
+.game-menu.left.open {
+  transform: translateX(0);
+}
+
+.game-menu.right {
+  @apply right-0 w-64;
+  transform: translateX(100%);
+}
+
+.game-menu.right.open {
+  transform: translateX(0);
+}
+
+.game-menu-trigger {
+  @apply absolute top-4 bg-[#98cf98] border-2 border-black w-8 h-16 flex items-center justify-center;
+  box-shadow: 2px 2px 0 #000;
+}
+
+.game-menu.left .game-menu-trigger {
+  @apply -right-8;
+}
+
+.game-menu.right .game-menu-trigger {
+  @apply -left-8;
+}
+
+.game-menu-content {
+  @apply h-full p-4 flex flex-col gap-4;
+}
+
+.game-section {
+  @apply bg-[#e8f4e8] border-2 border-black p-3;
+  box-shadow: inset 2px 2px 0 rgba(255,255,255,0.2),
+              inset -2px -2px 0 rgba(0,0,0,0.2);
+}
+
+.game-section-title {
+  @apply text-sm mb-2 px-1;
+}

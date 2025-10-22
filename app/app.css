@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import './styles/fonts.css';
+@import './styles/game-ui.css';
 
 @theme {
   --font-sans: "04b03", monospace;
@@ -7,15 +8,12 @@
 
 html,
 body {
-  @apply bg-white dark:bg-gray-950;
+  @apply bg-[#98cf98];
   font-family: '04b03', monospace;
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: unset;
   font-smooth: never;
-
-  @media (prefers-color-scheme: dark) {
-    color-scheme: dark;
-  }
+  overflow: hidden;
 }
 
 /* Ensure crisp pixel rendering */

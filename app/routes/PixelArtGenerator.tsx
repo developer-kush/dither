@@ -4,6 +4,9 @@ import { Board } from "./Board";
 import { KeyboardTrigger } from "../utils/KeyboardTrigger";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { usePersistentBoard } from "../hooks/usePersistentBoard";
+import { GameMenu } from "../components/GameMenu";
+import { GameSection } from "../components/GameSection";
+import { GameButton } from "../components/GameButton";
 import { floodFill } from "../utils/floodFill";
 
 const GRID_SIZES = [8, 16, 32, 64];
@@ -166,7 +169,7 @@ export default function PixelArtGenerator() {
       newBoard.setWindow(filledWindow);
     } else {
       // Normal pixel coloring
-      newBoard.setPixel(row, col, color);
+    newBoard.setPixel(row, col, color);
     }
     
     setBoard(newBoard);
@@ -275,7 +278,7 @@ export default function PixelArtGenerator() {
         const pixelColor = grid[y][x];
         if (pixelColor !== "rgba(0,0,0,0)" || format === 'jpeg') {
           ctx.fillStyle = pixelColor === "rgba(0,0,0,0)" ? '#FFFFFF' : pixelColor;
-          ctx.fillRect(x, y, 1, 1);
+        ctx.fillRect(x, y, 1, 1);
         }
       }
     }
@@ -364,81 +367,181 @@ export default function PixelArtGenerator() {
   }
 
   return (
-    <div className="flex flex-col items-center w-full min-h-screen bg-gradient-to-br from-blue-100 via-pink-100 to-yellow-100 p-4 gap-8 overflow-hidden relative text-sm">
-      {/* File Menu - Top Right */}
-      <div className="absolute top-4 right-4 z-50">
-        <div className="relative group">
-          <button className="px-4 py-2 bg-white/90 rounded-lg shadow-lg border-2 border-blue-400 text-black hover:bg-blue-50 transition text-sm">
-            📁 File
-          </button>
-          
-          {/* Dropdown Menu */}
-          <div className="absolute right-0 mt-2 w-48 bg-white/95 rounded-lg shadow-2xl border-2 border-blue-400 overflow-visible opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none group-hover:pointer-events-auto">
-            {/* Load Image */}
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full px-4 py-3 text-left hover:bg-blue-100 transition font-semibold text-black border-b border-gray-200"
+    <div className="w-full min-h-screen relative">
+      {/* Left Menu - Tiles */}
+      <GameMenu side="left" triggerIcon="≡">
+        {/* Empty for now */}
+      </GameMenu>
+
+      {/* Right Menu - Tools & Colors */}
+      <GameMenu side="right" triggerIcon="🎨" keyboardShortcut="b">
+        {/* Tools Section */}
+        <GameSection title="Tools">
+          <div className="flex flex-col gap-2">
+            <GameButton
+              icon
+              className={floodFillMode ? 'bg-[#7ac07a]' : ''}
+              onClick={() => setFloodFillMode(prev => !prev)}
+              title="Flood Fill (F)"
             >
-              📂 Load Image
-            </button>
-            
-            {/* Save submenu */}
-            <div className="relative group/save">
-              <div className="w-full px-4 py-3 hover:bg-blue-100 transition text-black flex justify-between items-center cursor-pointer">
-                <span className="text-xs">◀</span>
-                💾 Save As
-              </div>
-              
-            {/* Save format submenu */}
-            <div className="absolute right-full top-0 mr-1 w-40 bg-white/95 rounded-lg shadow-2xl border-2 border-blue-400 overflow-hidden opacity-0 invisible group-hover/save:opacity-100 group-hover/save:visible transition-all duration-200 pointer-events-none group-hover/save:pointer-events-auto">
-                <button 
-                  onClick={() => handleExport('png')}
-                  className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black border-b border-gray-200"
-                >
-                  PNG
-                </button>
-                <button 
-                  onClick={() => handleExport('jpeg')}
-                  className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black border-b border-gray-200"
-                >
-                  JPEG
-                </button>
-                <button 
-                  onClick={() => handleExport('webp')}
-                  className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black border-b border-gray-200"
-                >
-                  WebP
-                </button>
-                <button 
-                  onClick={() => handleExport('svg')}
-                  className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black"
-                >
-                  SVG
-                </button>
+              {floodFillMode ? '🪣' : '✏️'}
+            </GameButton>
+          </div>
+        </GameSection>
+
+        {/* Color Section */}
+        <GameSection title="Color">
+          <div className="flex flex-col gap-2">
+            <input 
+              type="color" 
+              value={color} 
+              onChange={handleColorChange} 
+              className="game-input w-full h-12"
+            />
+            <GameButton
+              icon
+              className={color === BIN_COLOR ? 'bg-[#7ac07a]' : ''}
+              onClick={() => setColor(BIN_COLOR)}
+              title="Transparent"
+            >
+              ❌
+            </GameButton>
+          </div>
+        </GameSection>
+
+        {/* Gradient Section */}
+        <GameSection title="Gradient">
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2 items-center">
+              <input 
+                type="color" 
+                value={gradientStart} 
+                onChange={e => setGradientStart(e.target.value)} 
+                className="game-input w-12 h-8" 
+              />
+              <span>→</span>
+              <input 
+                type="color" 
+                value={gradientEnd} 
+                onChange={e => setGradientEnd(e.target.value)} 
+                className="game-input w-12 h-8" 
+              />
+              <div className="flex items-center gap-1">
+                <GameButton onClick={() => setGradientSteps(s => Math.max(2, s - 1))}>-</GameButton>
+                <span className="game-input px-2">{gradientSteps}</span>
+                <GameButton onClick={() => setGradientSteps(s => Math.min(32, s + 1))}>+</GameButton>
               </div>
             </div>
+            <div className="flex flex-wrap gap-1">
+              {getGradientPalette(gradientStart, gradientEnd, gradientSteps).map((c: string, i: number) => (
+                <GameButton
+                  key={c + i}
+                  icon
+                  style={{ backgroundColor: c }}
+                  onClick={() => setColor(c)}
+                  title={c}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        </GameSection>
+
+        {/* Grid Size Section */}
+        <GameSection title="Grid Size">
+          <select 
+            value={gridSize} 
+            onChange={handleGridSizeChange} 
+            className="game-input w-full"
+          >
+            {GRID_SIZES.map(size => (
+              <option key={size} value={size}>{size}x{size}</option>
+            ))}
+          </select>
+        </GameSection>
+
+        {/* Pinned Colors */}
+        {pinnedColors.length > 0 && (
+          <GameSection title="Pinned">
+            <div className="flex flex-wrap gap-1">
+              {pinnedColors.map(c => (
+                <div key={c} className="relative">
+                  <GameButton
+                    icon
+                    style={{ backgroundColor: c }}
+                    onClick={() => setColor(c)}
+                    title={c}
+                  />
+                  <button
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-[#e8f4e8] border border-black rounded-sm flex items-center justify-center text-xs"
+                    onClick={() => handlePinColor(c)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </GameSection>
+        )}
+
+        {/* Recent Colors */}
+        {recentColors.length > 0 && (
+          <GameSection title="Recent">
+            <div className="flex flex-wrap gap-1">
+              {recentColors.map(c => (
+                <div key={c} className="relative">
+                  <GameButton
+                    icon
+                    style={{ backgroundColor: c }}
+                    onClick={() => setColor(c)}
+                    title={c}
+                  />
+                  <button
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-[#e8f4e8] border border-black rounded-sm flex items-center justify-center text-xs"
+                    onClick={() => handlePinColor(c)}
+                  >
+                    ★
+                  </button>
+                </div>
+              ))}
+            </div>
+          </GameSection>
+        )}
+
+        {/* Actions */}
+        <GameSection title="Actions">
+          <div className="flex flex-col gap-2">
+            <GameButton onClick={() => fileInputRef.current?.click()}>
+              📂 Load Image
+            </GameButton>
+            <GameButton onClick={() => handleExport('png')}>
+              💾 Save PNG
+            </GameButton>
+            <GameButton onClick={handleReset}>
+              🔄 Reset
+            </GameButton>
+          </div>
+        </GameSection>
+      </GameMenu>
+
+      {/* Main Canvas Area */}
+      <div className="w-full h-screen flex items-center justify-center">
+        <div className="relative">
+          {/* Size indicator */}
+          <div className="absolute -bottom-8 right-0 game-button">
+            {gridSize}x{gridSize}
       </div>
 
-      {/* Preview at the top, outside the control panel */}
-      <div className="mb-6">
-        <div className="mb-1 text-black text-center text-lg">Preview</div>
-        <PixelArtPreview virtualGrid={board.getVirtualGrid()} gridSize={gridSize} windowPos={board.window} />
-      </div>
-      <div className="flex flex-row items-start justify-center w-full gap-8">
-        {/* Grid on the left */}
-        <div className="flex-1 flex items-center justify-center min-w-0 min-h-0">
+          {/* Canvas */}
           <div
-            className="grid bg-gray-200 shadow-xl rounded-lg border-4 border-blue-400 relative"
+            className="game-border bg-[#e8f4e8]"
             style={{
+              display: 'grid',
               gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))`,
               width: 'min(80vh, 80vw)',
               height: 'min(80vh, 80vw)',
               aspectRatio: '1/1',
               userSelect: "none",
-              backgroundImage: 'repeating-linear-gradient(45deg, #e5e7eb 0 10px, #f3f4f6 10px 20px)',
             }}
             onMouseUp={handleMouseUp}
             onMouseLeave={() => { handleMouseUp(); setHoveredPixel(null); }}
@@ -447,7 +550,7 @@ export default function PixelArtGenerator() {
               row.map((cell, x) => (
                 <div
                   key={`${y}-${x}`}
-                  className="border border-gray-400 relative group"
+                  className="border border-black/10"
                   style={{ 
                     backgroundColor: cell === "rgba(0,0,0,0)" ? "transparent" : cell,
                     cursor: floodFillMode ? 'crosshair' : 'pointer'
@@ -456,9 +559,8 @@ export default function PixelArtGenerator() {
                   onMouseEnter={() => { handleMouseEnter(y, x); setHoveredPixel({x, y, color: cell}); }}
                   onMouseLeave={() => setHoveredPixel(null)}
                 >
-                  {/* Show color hex on hover */}
                   {hoveredPixel && hoveredPixel.x === x && hoveredPixel.y === y && (
-                    <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-10 px-2 py-1 rounded bg-black text-white text-xs shadow-lg border border-white whitespace-nowrap">
+                    <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-10 game-button whitespace-nowrap">
                       {cell === "rgba(0,0,0,0)" ? "TRANSPARENT" : cell.toUpperCase()}
                     </div>
                   )}
@@ -467,135 +569,9 @@ export default function PixelArtGenerator() {
             )}
           </div>
         </div>
-        {/* Controls on the right - just the control panel */}
-        <div className={`flex flex-col gap-4 w-[320px] p-4 bg-white/90 rounded-xl shadow-2xl border-2 border-blue-300 text-black min-h-0 overflow-y-auto max-h-[480px]`}>
-          {/* Quick upload buttons for last two uploads */}
-          {lastUploads.length > 0 && (
-            <div>
-              <div className="mb-1 text-black">Recent Uploads</div>
-              <div className="flex gap-2">
-                {lastUploads.map((url, i) => (
-                  <button key={url} className="px-2 py-1 bg-gray-200 rounded border border-blue-300 text-xs" onClick={() => handleLoadTexture(url)}>
-                    Upload #{i + 1}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {/* Flood Fill Toggle */}
-          <div>
-            <button
-              type="button"
-              className={`w-full py-2 px-4 rounded font-semibold border-2 transition ${
-                floodFillMode 
-                  ? 'bg-purple-500 text-white border-purple-700 hover:bg-purple-600' 
-                  : 'bg-gray-100 text-black border-gray-300 hover:bg-gray-200'
-              }`}
-              onClick={() => setFloodFillMode(prev => !prev)}
-              title="Toggle Flood Fill Mode (F key)"
-            >
-              {floodFillMode ? '🪣 Flood Fill: ON' : '✏️ Draw Mode'}
-            </button>
-          </div>
-          {/* Color and Gradient controls */}
-          <div>
-            <label className="block mb-1 text-black">Color</label>
-            <div className="flex gap-2 items-center">
-              <input type="color" value={color} onChange={handleColorChange} className="w-full h-12 p-0 border-2 border-blue-300 rounded cursor-pointer bg-white" />
-              <button
-                type="button"
-                className={`w-12 h-12 flex items-center justify-center border-2 rounded border-gray-400 bg-white hover:bg-gray-200 transition ${color === BIN_COLOR ? 'ring-2 ring-yellow-500' : ''}`}
-                title="Transparent (Bin)"
-                onClick={() => setColor(BIN_COLOR)}
-              >
-                <svg width="24" height="24" fill="none" viewBox="0 0 24 24">
-                  <rect width="24" height="24" rx="6" fill="#eee"/>
-                  <path d="M7 7l10 10M17 7L7 17" stroke="#888" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div>
-            <label className="block mb-1 text-black">Gradient Palette</label>
-            <div className="flex gap-2 items-center mb-2">
-              <input type="color" value={gradientStart} onChange={e => setGradientStart(e.target.value)} className="w-8 h-8 border-2 border-blue-300 rounded" title="Gradient Start" />
-              <span className="text-gray-500">→</span>
-              <input type="color" value={gradientEnd} onChange={e => setGradientEnd(e.target.value)} className="w-8 h-8 border-2 border-blue-300 rounded" title="Gradient End" />
-              <div className="flex items-center ml-4">
-                <button type="button" className="px-2 py-1 border rounded-l bg-gray-100 border-blue-300 text-lg font-bold" onClick={() => setGradientSteps(s => Math.max(2, s - 1))}>-</button>
-                <span className="px-2 border-t border-b border-blue-300 bg-white">{gradientSteps}</span>
-                <button type="button" className="px-2 py-1 border rounded-r bg-gray-100 border-blue-300 text-lg font-bold" onClick={() => setGradientSteps(s => Math.min(32, s + 1))}>+</button>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {getGradientPalette(gradientStart, gradientEnd, gradientSteps).map((c: string, i: number) => (
-                <button
-                  key={c + i}
-                  className="w-8 h-8 rounded border-2 border-blue-400 flex items-center justify-center hover:scale-110 transition"
-                  style={{ backgroundColor: c }}
-                  onClick={() => setColor(c)}
-                  title={c}
-                />
-              ))}
-            </div>
-          </div>
-          {/* Grid size, pins, recents, actions */}
-          <div>
-            <label className="block mb-1 text-black">Grid Size</label>
-            <select value={gridSize} onChange={handleGridSizeChange} className="border-2 border-blue-300 rounded px-2 py-1 w-full focus:ring-2 focus:ring-blue-400 text-black bg-white">
-              {GRID_SIZES.map(size => (
-                <option key={size} value={size} className="text-black bg-white">{size}x{size}</option>
-              ))}
-            </select>
-          </div>
-          {/* Pinned Colors */}
-          {pinnedColors.length > 0 && (
-            <div>
-              <div className="mb-1 text-black">Pinned Colors</div>
-              <div className="flex flex-wrap gap-2">
-                {pinnedColors.map((c, i) => (
-                  <button
-                    key={c}
-                    className="w-8 h-8 rounded border-2 border-pink-400 flex items-center justify-center relative group"
-                    style={{ backgroundColor: c }}
-                    onClick={() => setColor(c)}
-                    title={c}
-                  >
-                    <span
-                      className="absolute -top-2 -right-2 bg-white text-pink-600 rounded-full px-1 text-xs border border-pink-400 cursor-pointer group-hover:scale-110 transition"
-                      onClick={e => { e.stopPropagation(); handlePinColor(c); }}
-                    >×</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {/* Recent Colors */}
-          {recentColors.length > 0 && (
-            <div>
-              <div className="mb-1 text-black">Recent Colors</div>
-              <div className="flex flex-wrap gap-2">
-                {recentColors.map((c, i) => (
-                  <button
-                    key={c}
-                    className="w-8 h-8 rounded border-2 border-yellow-400 flex items-center justify-center relative group"
-                    style={{ backgroundColor: c }}
-                    onClick={() => setColor(c)}
-                    title={c}
-                  >
-                    <span
-                      className="absolute -top-2 -right-2 bg-white text-yellow-600 rounded-full px-1 text-xs border border-yellow-400 cursor-pointer group-hover:scale-110 transition"
-                      onClick={e => { e.stopPropagation(); handlePinColor(c); }}
-                    >★</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          <button onClick={handleReset} className="px-2 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500 border-2 border-yellow-600">Reset</button>
-          <input type="file" accept="image/*" ref={fileInputRef} onChange={handleLoadTexture} className="hidden" />
-        </div>
       </div>
+
+      <input type="file" accept="image/*" ref={fileInputRef} onChange={handleLoadTexture} className="hidden" />
       <canvas ref={canvasRef} className="hidden" />
     </div>
   );
