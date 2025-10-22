@@ -60,8 +60,8 @@
 }
 
 .game-menu.left {
-  @apply left-0 w-16;
-  transform: translateX(-100%);
+  @apply left-0 w-64;
+  transform: translateX(calc(-100% + 8px));
 }
 
 .game-menu.left.open {
@@ -70,7 +70,7 @@
 
 .game-menu.right {
   @apply right-0 w-1/2;
-  transform: translateX(100%);
+  transform: translateX(calc(100% - 8px));
 }
 
 .game-menu.right.open {
@@ -78,17 +78,7 @@
 }
 
 .game-menu-trigger {
-  background-color: var(--theme-bg-light);
-  @apply absolute top-4 border-2 border-black w-8 h-16 flex items-center justify-center;
-  box-shadow: 2px 2px 0 #000;
-}
-
-.game-menu.left .game-menu-trigger {
-  @apply -right-8;
-}
-
-.game-menu.right .game-menu-trigger {
-  @apply -left-8;
+  @apply hidden;
 }
 
 .game-menu-content {
