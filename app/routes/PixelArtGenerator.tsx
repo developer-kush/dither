@@ -400,11 +400,19 @@ export default function PixelArtGenerator() {
           <div className="flex flex-col gap-2">
             <GameButton
               icon
+              style={!floodFillMode ? { backgroundColor: 'var(--theme-accent)' } : {}}
+              onClick={() => setFloodFillMode(false)}
+              title="Pencil (Draw)"
+            >
+              <GameIcon type="pencil" />
+            </GameButton>
+            <GameButton
+              icon
               style={floodFillMode ? { backgroundColor: 'var(--theme-accent)' } : {}}
-              onClick={() => setFloodFillMode(prev => !prev)}
+              onClick={() => setFloodFillMode(true)}
               title="Flood Fill (F)"
             >
-              <GameIcon type={floodFillMode ? 'bucket' : 'pencil'} />
+              <GameIcon type="bucket" />
             </GameButton>
           </div>
         </GameSection>
