@@ -32,16 +32,12 @@ export const GameMenu: React.FC<GameMenuProps> = ({
 
   // Handle hover behavior
   useEffect(() => {
-    if (side === 'right' && !isOpen) return; // Right menu only opens on keyboard
     if (isHovered) {
       setIsOpen(true);
     } else {
-      // Only close if it wasn't opened by keyboard
-      if (side === 'left' || (side === 'right' && !isOpen)) {
-        setIsOpen(false);
-      }
+      setIsOpen(false);
     }
-  }, [isHovered, side, isOpen]);
+  }, [isHovered]);
 
   return (
     <div 
