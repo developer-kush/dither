@@ -534,18 +534,19 @@ export default function PixelArtGenerator() {
 
       {/* Main Canvas Area */}
       <div className="w-full h-screen flex items-center justify-center">
-        <div className="relative flex flex-col items-center gap-8">
+        <div className="relative flex flex-row items-center gap-8">
           {/* Preview */}
-          <div className="game-border bg-[#e8f4e8] p-2">
+          <div className="flex flex-col gap-2">
+            <div className="game-border bg-[#e8f4e8] p-2">
         <PixelArtPreview virtualGrid={board.getVirtualGrid()} gridSize={gridSize} windowPos={board.window} />
       </div>
+            <div className="game-button text-center">
+              {gridSize}x{gridSize}
+            </div>
+          </div>
 
           {/* Main Canvas */}
           <div className="relative">
-            {/* Size indicator */}
-            <div className="absolute -bottom-8 right-0 game-button">
-              {gridSize}x{gridSize}
-            </div>
 
           {/* Canvas */}
           <div
