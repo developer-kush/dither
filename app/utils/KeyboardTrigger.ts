@@ -13,6 +13,9 @@ interface KeyBinding {
   handler: KeyHandler;
   preventDefault?: boolean;
   description?: string;
+  ctrlKey?: boolean;
+  shiftKey?: boolean;
+  metaKey?: boolean;
 }
 
 export class KeyboardTrigger {
@@ -29,13 +32,22 @@ export class KeyboardTrigger {
   register(
     keys: string[],
     handler: KeyHandler,
-    options: { preventDefault?: boolean; description?: string } = {}
+    options: { 
+      preventDefault?: boolean; 
+      description?: string;
+      ctrlKey?: boolean;
+      shiftKey?: boolean;
+      metaKey?: boolean;
+    } = {}
   ): void {
     this.bindings.push({
       keys,
       handler,
       preventDefault: options.preventDefault ?? true,
       description: options.description,
+      ctrlKey: options.ctrlKey,
+      shiftKey: options.shiftKey,
+      metaKey: options.metaKey,
     });
   }
 
@@ -105,7 +117,15 @@ export class KeyboardTrigger {
    */
   private handleKeyDown(event: KeyboardEvent): void {
     for (const binding of this.bindings) {
-      if (binding.keys.includes(event.key)) {
+      // Check if key matches
+      if (!binding.keys.includes(event.key)) continue;
+      
+      // Check modifier keys
+      const ctrlMatch = binding.ctrlKey === undefined || binding.ctrlKey === (event.ctrlKey || event.metaKey);
+      const shiftMatch = binding.shiftKey === undefined || binding.shiftKey === event.shiftKey;
+      const metaMatch = binding.metaKey === undefined || binding.metaKey === event.metaKey;
+      
+      if (ctrlMatch && shiftMatch && metaMatch) {
         if (binding.preventDefault) {
           event.preventDefault();
         }

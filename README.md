@@ -26,6 +26,10 @@ The pixel art generator supports extensive keyboard controls for efficient editi
   - **Draw Mode** (✏️): Click and drag to paint individual pixels
   - **Flood Fill Mode** (🪣): Click to fill connected regions with the current color
 
+#### Undo/Redo
+- **Ctrl+Z** (or **Cmd+Z** on Mac): Undo last action
+- **Ctrl+Shift+Z** (or **Cmd+Shift+Z** on Mac): Redo last action
+
 ### 🪣 Flood Fill Tool
 The flood fill feature works like the "paint bucket" tool in traditional image editors:
 - Fills all connected pixels of the same color

@@ -25,6 +25,7 @@ export default function PixelArtGenerator() {
   const [grid, setGrid] = useState(() => board.getWindow());
   const [mouseDown, setMouseDown] = useState(false);
   const [undoStack, setUndoStack] = useState<Board[]>([]);
+  const [redoStack, setRedoStack] = useState<Board[]>([]);
   const [hoveredPixel, setHoveredPixel] = useState<{x: number, y: number, color: string} | null>(null);
   const [lastUploads, setLastUploads] = useState<string[]>([]);
   const [floodFillMode, setFloodFillMode] = useState(false);
@@ -50,6 +51,24 @@ export default function PixelArtGenerator() {
     if (direction === 'right') newBoard.shift(1, 0);
     setBoard(newBoard);
   }, [board]);
+
+  // Undo function
+  const handleUndo = useCallback(() => {
+    if (undoStack.length === 0) return;
+    const prevBoard = undoStack[undoStack.length - 1];
+    setRedoStack(prev => [...prev, board]);
+    setBoard(prevBoard);
+    setUndoStack(prev => prev.slice(0, -1));
+  }, [undoStack, board]);
+
+  // Redo function
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0) return;
+    const nextBoard = redoStack[redoStack.length - 1];
+    setUndoStack(prev => [...prev, board]);
+    setBoard(nextBoard);
+    setRedoStack(prev => prev.slice(0, -1));
+  }, [redoStack, board]);
 
   // Set up keyboard controls
   useEffect(() => {
@@ -84,13 +103,34 @@ export default function PixelArtGenerator() {
       },
     ]);
 
+    // Register undo/redo shortcuts
+    keyboard.register(
+      ['z', 'Z'],
+      handleUndo,
+      { 
+        ctrlKey: true, 
+        shiftKey: false,
+        description: 'Undo last action' 
+      }
+    );
+    
+    keyboard.register(
+      ['z', 'Z'],
+      handleRedo,
+      { 
+        ctrlKey: true, 
+        shiftKey: true,
+        description: 'Redo last action' 
+      }
+    );
+
     keyboard.start();
 
     // Cleanup on unmount
     return () => {
       keyboard.destroy();
     };
-  }, [shiftWindow]); // Re-register when shiftWindow changes
+  }, [shiftWindow, handleUndo, handleRedo]); // Re-register when dependencies change
 
   // Handle grid size change
   function handleGridSizeChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -99,6 +139,7 @@ export default function PixelArtGenerator() {
     setGridSize(size);
     setBoard(newBoard);
     setUndoStack([]);
+    setRedoStack([]);
   }
 
   // Add color to recent colors (if not already present, and not transparent)
@@ -113,6 +154,7 @@ export default function PixelArtGenerator() {
   // Handle pixel coloring (add color to recents)
   function handlePixelAction(row: number, col: number) {
     setUndoStack(stack => [...stack, board]);
+    setRedoStack([]); // Clear redo stack when new action is performed
     const newBoard = new Board(board.size);
     newBoard.data = board.getVirtualGrid();
     newBoard.window = { ...board.window };
@@ -147,16 +189,6 @@ export default function PixelArtGenerator() {
   // Pin/unpin color
   function handlePinColor(pinColor: string) {
     setPinnedColors(prev => prev.includes(pinColor) ? prev.filter(c => c !== pinColor) : [pinColor, ...prev]);
-  }
-
-  // Undo
-  function handleUndo() {
-    setUndoStack(stack => {
-      if (stack.length === 0) return stack;
-      const prev = stack[stack.length - 1];
-      setBoard(prev);
-      return stack.slice(0, -1);
-    });
   }
 
   // Load image
@@ -211,6 +243,7 @@ export default function PixelArtGenerator() {
     newBoard.centerWindow();
     setBoard(newBoard);
     setUndoStack([]);
+    setRedoStack([]);
   }
 
   // Export as PNG
@@ -455,7 +488,6 @@ export default function PixelArtGenerator() {
               </div>
             </div>
           )}
-          <button onClick={handleUndo} className="px-2 py-2 bg-red-500 text-white rounded hover:bg-red-600 font-semibold border-2 border-red-700">Undo</button>
           <button onClick={handleExport} className="px-2 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-semibold border-2 border-blue-700">Export PNG</button>
           <button onClick={() => fileInputRef.current?.click()} className="px-2 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-semibold border-2 border-green-700">Load Texture</button>
           <button onClick={handleReset} className="px-2 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500 font-semibold border-2 border-yellow-600">Reset</button>
