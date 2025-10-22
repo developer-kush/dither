@@ -248,19 +248,35 @@ export default function PixelArtGenerator() {
 
   // Export as image (supports multiple formats)
   function handleExport(format: 'png' | 'jpeg' | 'webp' | 'svg' = 'png') {
+    console.log('Exporting as:', format);
     const size = gridSize;
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      console.error('Canvas not found');
+      return;
+    }
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) {
+      console.error('Canvas context not found');
+      return;
+    }
+    
+    // For JPEG, fill with white background first (JPEG doesn't support transparency)
+    if (format === 'jpeg') {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, size, size);
+    }
     
     // Draw pixels to canvas
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
-        ctx.fillStyle = grid[y][x];
-        ctx.fillRect(x, y, 1, 1);
+        const pixelColor = grid[y][x];
+        if (pixelColor !== "rgba(0,0,0,0)" || format === 'jpeg') {
+          ctx.fillStyle = pixelColor === "rgba(0,0,0,0)" ? '#FFFFFF' : pixelColor;
+          ctx.fillRect(x, y, 1, 1);
+        }
       }
     }
     
@@ -284,17 +300,22 @@ export default function PixelArtGenerator() {
       a.download = `pixel-art-${size}x${size}.svg`;
       a.click();
       URL.revokeObjectURL(url);
+      console.log('SVG exported successfully');
     } else {
       // Export as raster format
       const mimeType = format === 'png' ? 'image/png' : format === 'jpeg' ? 'image/jpeg' : 'image/webp';
       canvas.toBlob(blob => {
-        if (!blob) return;
+        if (!blob) {
+          console.error('Failed to create blob');
+          return;
+        }
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
         a.download = `pixel-art-${size}x${size}.${format}`;
         a.click();
         URL.revokeObjectURL(url);
+        console.log(`${format.toUpperCase()} exported successfully`);
       }, mimeType, format === 'jpeg' ? 0.95 : undefined);
     }
   }
@@ -343,56 +364,58 @@ export default function PixelArtGenerator() {
   }
 
   return (
-    <div className="flex flex-col items-center w-full min-h-screen bg-gradient-to-br from-blue-100 via-pink-100 to-yellow-100 p-4 gap-8 overflow-hidden relative">
+    <div className="flex flex-col items-center w-full min-h-screen bg-gradient-to-br from-blue-100 via-pink-100 to-yellow-100 p-4 gap-8 overflow-hidden relative text-sm">
       {/* File Menu - Top Right */}
-      <div className="absolute top-4 right-4 z-50 group">
-        <button className="px-4 py-2 bg-white/90 rounded-lg shadow-lg border-2 border-blue-400 font-semibold text-black hover:bg-blue-50 transition">
-          📁 File
-        </button>
-        
-        {/* Dropdown Menu */}
-        <div className="absolute right-0 mt-2 w-48 bg-white/95 rounded-lg shadow-2xl border-2 border-blue-400 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-          {/* Load Image */}
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full px-4 py-3 text-left hover:bg-blue-100 transition font-semibold text-black border-b border-gray-200"
-          >
-            📂 Load Image
+      <div className="absolute top-4 right-4 z-50">
+        <div className="relative group">
+          <button className="px-4 py-2 bg-white/90 rounded-lg shadow-lg border-2 border-blue-400 text-black hover:bg-blue-50 transition text-sm">
+            📁 File
           </button>
           
-          {/* Save submenu */}
-          <div className="relative group/save">
-            <button className="w-full px-4 py-3 text-left hover:bg-blue-100 transition font-semibold text-black flex justify-between items-center">
-              💾 Save As
-              <span className="text-xs">▶</span>
+          {/* Dropdown Menu */}
+          <div className="absolute right-0 mt-2 w-48 bg-white/95 rounded-lg shadow-2xl border-2 border-blue-400 overflow-visible opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none group-hover:pointer-events-auto">
+            {/* Load Image */}
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full px-4 py-3 text-left hover:bg-blue-100 transition font-semibold text-black border-b border-gray-200"
+            >
+              📂 Load Image
             </button>
             
-            {/* Save format submenu */}
-            <div className="absolute left-full top-0 ml-1 w-40 bg-white/95 rounded-lg shadow-2xl border-2 border-blue-400 overflow-hidden opacity-0 invisible group-hover/save:opacity-100 group-hover/save:visible transition-all duration-200">
-              <button 
-                onClick={() => handleExport('png')}
-                className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black border-b border-gray-200"
-              >
-                PNG
-              </button>
-              <button 
-                onClick={() => handleExport('jpeg')}
-                className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black border-b border-gray-200"
-              >
-                JPEG
-              </button>
-              <button 
-                onClick={() => handleExport('webp')}
-                className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black border-b border-gray-200"
-              >
-                WebP
-              </button>
-              <button 
-                onClick={() => handleExport('svg')}
-                className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black"
-              >
-                SVG
-              </button>
+            {/* Save submenu */}
+            <div className="relative group/save">
+              <div className="w-full px-4 py-3 hover:bg-blue-100 transition text-black flex justify-between items-center cursor-pointer">
+                💾 Save As
+                <span className="text-xs">▶</span>
+              </div>
+              
+              {/* Save format submenu */}
+              <div className="absolute left-full top-0 ml-1 w-40 bg-white/95 rounded-lg shadow-2xl border-2 border-blue-400 overflow-hidden opacity-0 invisible group-hover/save:opacity-100 group-hover/save:visible transition-all duration-200 pointer-events-none group-hover/save:pointer-events-auto">
+                <button 
+                  onClick={() => handleExport('png')}
+                  className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black border-b border-gray-200"
+                >
+                  PNG
+                </button>
+                <button 
+                  onClick={() => handleExport('jpeg')}
+                  className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black border-b border-gray-200"
+                >
+                  JPEG
+                </button>
+                <button 
+                  onClick={() => handleExport('webp')}
+                  className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black border-b border-gray-200"
+                >
+                  WebP
+                </button>
+                <button 
+                  onClick={() => handleExport('svg')}
+                  className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black"
+                >
+                  SVG
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -400,7 +423,7 @@ export default function PixelArtGenerator() {
 
       {/* Preview at the top, outside the control panel */}
       <div className="mb-6">
-        <div className="font-bold mb-1 text-black text-center">Preview</div>
+        <div className="mb-1 text-black text-center text-lg">Preview</div>
         <PixelArtPreview virtualGrid={board.getVirtualGrid()} gridSize={gridSize} windowPos={board.window} />
       </div>
       <div className="flex flex-row items-start justify-center w-full gap-8">
@@ -449,7 +472,7 @@ export default function PixelArtGenerator() {
           {/* Quick upload buttons for last two uploads */}
           {lastUploads.length > 0 && (
             <div>
-              <div className="font-bold mb-1 text-black">Recent Uploads</div>
+              <div className="mb-1 text-black">Recent Uploads</div>
               <div className="flex gap-2">
                 {lastUploads.map((url, i) => (
                   <button key={url} className="px-2 py-1 bg-gray-200 rounded border border-blue-300 text-xs" onClick={() => handleLoadTexture(url)}>
@@ -476,7 +499,7 @@ export default function PixelArtGenerator() {
           </div>
           {/* Color and Gradient controls */}
           <div>
-            <label className="font-bold block mb-1 text-black">Color</label>
+            <label className="block mb-1 text-black">Color</label>
             <div className="flex gap-2 items-center">
               <input type="color" value={color} onChange={handleColorChange} className="w-full h-12 p-0 border-2 border-blue-300 rounded cursor-pointer bg-white" />
               <button
@@ -493,7 +516,7 @@ export default function PixelArtGenerator() {
             </div>
           </div>
           <div>
-            <label className="font-bold block mb-1 text-black">Gradient Palette</label>
+            <label className="block mb-1 text-black">Gradient Palette</label>
             <div className="flex gap-2 items-center mb-2">
               <input type="color" value={gradientStart} onChange={e => setGradientStart(e.target.value)} className="w-8 h-8 border-2 border-blue-300 rounded" title="Gradient Start" />
               <span className="text-gray-500">→</span>
@@ -518,7 +541,7 @@ export default function PixelArtGenerator() {
           </div>
           {/* Grid size, pins, recents, actions */}
           <div>
-            <label className="font-bold block mb-1 text-black">Grid Size</label>
+            <label className="block mb-1 text-black">Grid Size</label>
             <select value={gridSize} onChange={handleGridSizeChange} className="border-2 border-blue-300 rounded px-2 py-1 w-full focus:ring-2 focus:ring-blue-400 text-black bg-white">
               {GRID_SIZES.map(size => (
                 <option key={size} value={size} className="text-black bg-white">{size}x{size}</option>
@@ -528,7 +551,7 @@ export default function PixelArtGenerator() {
           {/* Pinned Colors */}
           {pinnedColors.length > 0 && (
             <div>
-              <div className="font-bold mb-1 text-black">Pinned Colors</div>
+              <div className="mb-1 text-black">Pinned Colors</div>
               <div className="flex flex-wrap gap-2">
                 {pinnedColors.map((c, i) => (
                   <button
@@ -550,7 +573,7 @@ export default function PixelArtGenerator() {
           {/* Recent Colors */}
           {recentColors.length > 0 && (
             <div>
-              <div className="font-bold mb-1 text-black">Recent Colors</div>
+              <div className="mb-1 text-black">Recent Colors</div>
               <div className="flex flex-wrap gap-2">
                 {recentColors.map((c, i) => (
                   <button
@@ -569,7 +592,7 @@ export default function PixelArtGenerator() {
               </div>
             </div>
           )}
-          <button onClick={handleReset} className="px-2 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500 font-semibold border-2 border-yellow-600">Reset</button>
+          <button onClick={handleReset} className="px-2 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500 border-2 border-yellow-600">Reset</button>
           <input type="file" accept="image/*" ref={fileInputRef} onChange={handleLoadTexture} className="hidden" />
         </div>
       </div>
