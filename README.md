@@ -1,6 +1,10 @@
-# Pixel Art Generator
+> [!NOTE]
+> **THIS PROJECT IS MADE ENTIRELY USING AI, (for experiment, and tool usage purposes)** \
+> **I DO NOT CLAIM TO HAVE WRITTEN THIS CODE**
 
-A modern pixel art editor for creating and editing pixel art with keyboard controls.
+# Dither
+
+A Modern pixel art editor for creating and editing pixel art and tilesets
 
 ## Features
 
