@@ -45,6 +45,12 @@ export default function PixelArtGenerator() {
     setGrid(board.getWindow());
   }, [board]);
 
+  // Update theme based on tool mode
+  useEffect(() => {
+    const theme = floodFillMode ? 'blue' : 'green';
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [floodFillMode]);
+
   // Shift logic: move the window, not the pixels
   const shiftWindow = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
     const newBoard = new Board(board.size);
@@ -384,7 +390,7 @@ export default function PixelArtGenerator() {
           <div className="flex flex-col gap-2">
             <GameButton
               icon
-              className={floodFillMode ? 'bg-[#7ac07a]' : ''}
+              style={floodFillMode ? { backgroundColor: 'var(--theme-accent)' } : {}}
               onClick={() => setFloodFillMode(prev => !prev)}
               title="Flood Fill (F)"
             >
@@ -404,7 +410,7 @@ export default function PixelArtGenerator() {
             />
             <GameButton
               icon
-              className={color === BIN_COLOR ? 'bg-[#7ac07a]' : ''}
+              style={color === BIN_COLOR ? { backgroundColor: 'var(--theme-accent)' } : {}}
               onClick={() => setColor(BIN_COLOR)}
               title="Transparent"
             >
@@ -463,7 +469,8 @@ export default function PixelArtGenerator() {
                     title={c}
                   />
                   <button
-                    className="absolute -top-1 -right-1 w-4 h-4 bg-[#e8f4e8] border border-black rounded-sm flex items-center justify-center text-xs"
+                    className="absolute -top-1 -right-1 w-4 h-4 border border-black flex items-center justify-center text-xs"
+                    style={{ backgroundColor: 'var(--theme-bg-panel)' }}
                     onClick={() => handlePinColor(c)}
                   >
                     ×
@@ -487,7 +494,8 @@ export default function PixelArtGenerator() {
                     title={c}
                   />
                   <button
-                    className="absolute -top-1 -right-1 w-4 h-4 bg-[#e8f4e8] border border-black rounded-sm flex items-center justify-center text-xs"
+                    className="absolute -top-1 -right-1 w-4 h-4 border border-black flex items-center justify-center text-xs"
+                    style={{ backgroundColor: 'var(--theme-bg-panel)' }}
                     onClick={() => handlePinColor(c)}
                   >
                     ★
@@ -512,10 +520,10 @@ export default function PixelArtGenerator() {
         <div className="relative flex flex-row items-center gap-8">
           {/* Preview */}
           <div className="flex flex-col gap-2">
-            <div className="text-center text-sm px-3 py-1 bg-[#c2e4c2] border-2 border-black w-fit mx-auto" style={{ boxShadow: '2px 2px 0 #000' }}>
+            <div className="text-center text-sm px-3 py-1 border-2 border-black w-fit mx-auto" style={{ backgroundColor: 'var(--theme-bg-medium)', boxShadow: '2px 2px 0 #000' }}>
               Preview
             </div>
-            <div className="game-border bg-[#e8f4e8] p-2">
+            <div className="game-border p-2" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
               <PixelArtPreview virtualGrid={board.getVirtualGrid()} gridSize={gridSize} windowPos={board.window} />
             </div>
           </div>
@@ -526,8 +534,9 @@ export default function PixelArtGenerator() {
           {/* Canvas */}
           <div className="relative">
             <div
-              className="game-border bg-[#e8f4e8]"
+              className="game-border"
               style={{
+                backgroundColor: 'var(--theme-bg-panel)',
                 display: 'grid',
                 gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
                 gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))`,

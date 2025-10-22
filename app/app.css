@@ -6,9 +6,31 @@
   --font-sans: "04b03", monospace;
 }
 
+:root {
+  /* Green theme - Draw mode */
+  --theme-bg-light: #98cf98;
+  --theme-bg-medium: #c2e4c2;
+  --theme-bg-panel: #e8f4e8;
+  --theme-accent: #7ac07a;
+}
+
+:root[data-theme="green"] {
+  --theme-bg-light: #98cf98;
+  --theme-bg-medium: #c2e4c2;
+  --theme-bg-panel: #e8f4e8;
+  --theme-accent: #7ac07a;
+}
+
+:root[data-theme="blue"] {
+  --theme-bg-light: #98b3cf;
+  --theme-bg-medium: #c2d4e4;
+  --theme-bg-panel: #e8eff4;
+  --theme-accent: #7a9cc0;
+}
+
 html,
 body {
-  @apply bg-[#98cf98];
+  background-color: var(--theme-bg-light);
   font-family: '04b03', monospace;
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: unset;

@@ -5,20 +5,22 @@
 }
 
 .game-panel {
-  @apply bg-[#c2e4c2] border-2 border-black p-4;
+  background-color: var(--theme-bg-medium);
+  @apply border-2 border-black p-4;
   box-shadow: inset 2px 2px 0 rgba(255,255,255,0.2),
               inset -2px -2px 0 rgba(0,0,0,0.2);
 }
 
 .game-button {
-  @apply bg-[#98cf98] border-2 border-black px-4 py-2 transition-all;
+  background-color: var(--theme-bg-light);
+  @apply border-2 border-black px-4 py-2 transition-all;
   box-shadow: inset 2px 2px 0 rgba(255,255,255,0.2),
               inset -2px -2px 0 rgba(0,0,0,0.2),
               2px 2px 0 #000;
 }
 
 .game-button:hover {
-  @apply bg-[#7ac07a];
+  background-color: var(--theme-accent);
 }
 
 .game-button:active {
@@ -28,14 +30,15 @@
 }
 
 .game-icon-button {
-  @apply w-12 h-12 flex items-center justify-center bg-[#98cf98] border-2 border-black transition-all;
+  background-color: var(--theme-bg-light);
+  @apply w-12 h-12 flex items-center justify-center border-2 border-black transition-all;
   box-shadow: inset 2px 2px 0 rgba(255,255,255,0.2),
               inset -2px -2px 0 rgba(0,0,0,0.2),
               2px 2px 0 #000;
 }
 
 .game-icon-button:hover {
-  @apply bg-[#7ac07a];
+  background-color: var(--theme-accent);
 }
 
 .game-icon-button:active {
@@ -45,12 +48,14 @@
 }
 
 .game-input {
-  @apply bg-[#e8f4e8] border-2 border-black px-3 py-1;
+  background-color: var(--theme-bg-panel);
+  @apply border-2 border-black px-3 py-1;
   box-shadow: inset 2px 2px 0 rgba(0,0,0,0.1);
 }
 
 .game-menu {
-  @apply fixed top-0 bottom-0 bg-[#c2e4c2] border-r-2 border-black transition-all duration-200 z-50;
+  background-color: var(--theme-bg-medium);
+  @apply fixed top-0 bottom-0 border-r-2 border-black transition-all duration-200 z-50;
   box-shadow: 4px 0 0 #000;
 }
 
@@ -73,7 +78,8 @@
 }
 
 .game-menu-trigger {
-  @apply absolute top-4 bg-[#98cf98] border-2 border-black w-8 h-16 flex items-center justify-center;
+  background-color: var(--theme-bg-light);
+  @apply absolute top-4 border-2 border-black w-8 h-16 flex items-center justify-center;
   box-shadow: 2px 2px 0 #000;
 }
 
@@ -96,7 +102,8 @@
 }
 
 .game-section {
-  @apply bg-[#e8f4e8] border-2 border-black p-3;
+  background-color: var(--theme-bg-panel);
+  @apply border-2 border-black p-3;
   box-shadow: inset 2px 2px 0 rgba(255,255,255,0.2),
               inset -2px -2px 0 rgba(0,0,0,0.2);
 }
