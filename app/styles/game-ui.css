@@ -55,13 +55,13 @@
 
 .game-menu {
   background-color: var(--theme-bg-medium);
-  @apply fixed top-0 bottom-0 border-r-2 border-black transition-all duration-200 z-50;
-  box-shadow: 4px 0 0 #000;
+  @apply fixed top-0 bottom-0 transition-all duration-200 z-50;
 }
 
 .game-menu.left {
-  @apply left-0 w-64;
-  transform: translateX(calc(-100% + 8px));
+  @apply left-0 w-64 border-r-2 border-black;
+  box-shadow: 4px 0 0 #000;
+  transform: translateX(calc(-100% + 16px));
 }
 
 .game-menu.left.open {
@@ -69,8 +69,9 @@
 }
 
 .game-menu.right {
-  @apply right-0 w-1/2;
-  transform: translateX(calc(100% - 8px));
+  @apply right-0 w-1/2 border-l-2 border-black;
+  box-shadow: -4px 0 0 #000;
+  transform: translateX(calc(100% - 16px));
 }
 
 .game-menu.right.open {
