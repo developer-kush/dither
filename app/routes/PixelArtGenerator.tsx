@@ -8,6 +8,7 @@ import { GameMenu } from "../components/GameMenu";
 import { GameSection } from "../components/GameSection";
 import { GameButton } from "../components/GameButton";
 import { GameIcon } from "../components/GameIcon";
+import { NavBar } from "../components/NavBar";
 import { floodFill } from "../utils/floodFill";
 
 const GRID_SIZES = [8, 16, 32, 64];
@@ -449,19 +450,6 @@ export default function PixelArtGenerator() {
           </div>
         </GameSection>
 
-        {/* Grid Size Section */}
-        <GameSection title="Grid Size">
-          <select 
-            value={gridSize} 
-            onChange={handleGridSizeChange} 
-            className="game-input w-full"
-          >
-            {GRID_SIZES.map(size => (
-              <option key={size} value={size}>{size}x{size}</option>
-            ))}
-          </select>
-        </GameSection>
-
         {/* Pinned Colors */}
         {pinnedColors.length > 0 && (
           <GameSection title="Pinned">
@@ -510,38 +498,25 @@ export default function PixelArtGenerator() {
           </GameSection>
         )}
 
-        {/* Actions */}
-        <GameSection title="Actions">
-          <div className="flex flex-col gap-2">
-            <GameButton onClick={() => fileInputRef.current?.click()}>
-              <div className="flex items-center gap-2">
-                <GameIcon type="load" /> Load Image
-              </div>
-            </GameButton>
-            <GameButton onClick={() => handleExport('png')}>
-              <div className="flex items-center gap-2">
-                <GameIcon type="save" /> Save PNG
-              </div>
-            </GameButton>
-            <GameButton onClick={handleReset}>
-              <div className="flex items-center gap-2">
-                <GameIcon type="reset" /> Reset
-              </div>
-            </GameButton>
-          </div>
-        </GameSection>
       </GameMenu>
 
+      {/* NavBar */}
+      <NavBar 
+        onExport={handleExport}
+        onReset={handleReset}
+        onLoadClick={() => fileInputRef.current?.click()}
+      />
+
       {/* Main Canvas Area */}
-      <div className="w-full h-screen flex items-center justify-center">
+      <div className="w-full h-screen pt-16 flex items-center justify-center">
         <div className="relative flex flex-row items-center gap-8">
           {/* Preview */}
           <div className="flex flex-col gap-2">
+            <div className="text-center text-sm px-3 py-1 bg-[#c2e4c2] border-2 border-black w-fit mx-auto" style={{ boxShadow: '2px 2px 0 #000' }}>
+              Preview
+            </div>
             <div className="game-border bg-[#e8f4e8] p-2">
-        <PixelArtPreview virtualGrid={board.getVirtualGrid()} gridSize={gridSize} windowPos={board.window} />
-      </div>
-            <div className="game-button text-center">
-              {gridSize}x{gridSize}
+              <PixelArtPreview virtualGrid={board.getVirtualGrid()} gridSize={gridSize} windowPos={board.window} />
             </div>
           </div>
 
@@ -549,41 +524,57 @@ export default function PixelArtGenerator() {
           <div className="relative">
 
           {/* Canvas */}
-          <div
-            className="game-border bg-[#e8f4e8]"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
-              gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))`,
-              width: 'min(80vh, 80vw)',
-              height: 'min(80vh, 80vw)',
-              aspectRatio: '1/1',
-              userSelect: "none",
-            }}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={() => { handleMouseUp(); setHoveredPixel(null); }}
-          >
-            {grid.map((row, y) =>
-              row.map((cell, x) => (
-                <div
-                  key={`${y}-${x}`}
-                  className="border border-black/10"
-                  style={{ 
-                    backgroundColor: cell === "rgba(0,0,0,0)" ? "transparent" : cell,
-                    cursor: floodFillMode ? 'crosshair' : 'pointer'
-                  }}
-                  onMouseDown={() => handleMouseDown(y, x)}
-                  onMouseEnter={() => { handleMouseEnter(y, x); setHoveredPixel({x, y, color: cell}); }}
-                  onMouseLeave={() => setHoveredPixel(null)}
+          <div className="relative">
+            <div
+              className="game-border bg-[#e8f4e8]"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
+                gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))`,
+                width: 'min(80vh, 80vw)',
+                height: 'min(80vh, 80vw)',
+                aspectRatio: '1/1',
+                userSelect: "none",
+              }}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={() => { handleMouseUp(); setHoveredPixel(null); }}
+            >
+              {grid.map((row, y) =>
+                row.map((cell, x) => (
+                  <div
+                    key={`${y}-${x}`}
+                    className="border border-black/10"
+                    style={{ 
+                      backgroundColor: cell === "rgba(0,0,0,0)" ? "transparent" : cell,
+                      cursor: floodFillMode ? 'crosshair' : 'pointer'
+                    }}
+                    onMouseDown={() => handleMouseDown(y, x)}
+                    onMouseEnter={() => { handleMouseEnter(y, x); setHoveredPixel({x, y, color: cell}); }}
+                    onMouseLeave={() => setHoveredPixel(null)}
+                  >
+                    {hoveredPixel && hoveredPixel.x === x && hoveredPixel.y === y && (
+                      <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-10 game-button whitespace-nowrap">
+                        {cell === "rgba(0,0,0,0)" ? "TRANSPARENT" : cell.toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+            {/* Grid Size Selector */}
+            <div className="absolute right-[5%] top-[calc(100%-1px)] -translate-y-1/2 z-10">
+              <div className="game-button whitespace-nowrap">
+                <select 
+                  value={gridSize} 
+                  onChange={handleGridSizeChange} 
+                  className="bg-transparent border-none outline-none cursor-pointer"
                 >
-                  {hoveredPixel && hoveredPixel.x === x && hoveredPixel.y === y && (
-                    <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-10 game-button whitespace-nowrap">
-                      {cell === "rgba(0,0,0,0)" ? "TRANSPARENT" : cell.toUpperCase()}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
+                  {GRID_SIZES.map(size => (
+                    <option key={size} value={size}>{size}x{size}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
         </div>
         </div>

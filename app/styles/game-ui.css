@@ -64,7 +64,7 @@
 }
 
 .game-menu.right {
-  @apply right-0 w-64;
+  @apply right-0 w-1/2;
   transform: translateX(100%);
 }
 
