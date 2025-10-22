@@ -4,6 +4,15 @@ A modern pixel art editor for creating and editing pixel art with keyboard contr
 
 ## Features
 
+### 📁 File Menu
+The floating **File** button in the top right corner provides quick access to:
+- **Load Image**: Import an existing image to trace or edit
+- **Save As**: Export your pixel art in multiple formats
+  - **PNG**: Lossless raster format (recommended)
+  - **JPEG**: Compressed format for smaller file sizes
+  - **WebP**: Modern format with great compression
+  - **SVG**: Vector format that scales perfectly
+
 ### 🎨 Persistent Storage
 All your work is automatically saved to your browser's localStorage and restored when you reload the page:
 - **Board State**: Your entire pixel art canvas is preserved

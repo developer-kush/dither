@@ -246,8 +246,8 @@ export default function PixelArtGenerator() {
     setRedoStack([]);
   }
 
-  // Export as PNG
-  function handleExport() {
+  // Export as image (supports multiple formats)
+  function handleExport(format: 'png' | 'jpeg' | 'webp' | 'svg' = 'png') {
     const size = gridSize;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -255,21 +255,48 @@ export default function PixelArtGenerator() {
     canvas.height = size;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    
+    // Draw pixels to canvas
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
         ctx.fillStyle = grid[y][x];
         ctx.fillRect(x, y, 1, 1);
       }
     }
-    canvas.toBlob(blob => {
-      if (!blob) return;
+    
+    if (format === 'svg') {
+      // Generate SVG
+      let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`;
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const color = grid[y][x];
+          if (color !== "rgba(0,0,0,0)") {
+            svg += `<rect x="${x}" y="${y}" width="1" height="1" fill="${color}"/>`;
+          }
+        }
+      }
+      svg += '</svg>';
+      
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `pixel-art-${size}x${size}.png`;
+      a.download = `pixel-art-${size}x${size}.svg`;
       a.click();
       URL.revokeObjectURL(url);
-    });
+    } else {
+      // Export as raster format
+      const mimeType = format === 'png' ? 'image/png' : format === 'jpeg' ? 'image/jpeg' : 'image/webp';
+      canvas.toBlob(blob => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `pixel-art-${size}x${size}.${format}`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, mimeType, format === 'jpeg' ? 0.95 : undefined);
+    }
   }
 
   // Destructive scroll toggle
@@ -316,7 +343,61 @@ export default function PixelArtGenerator() {
   }
 
   return (
-    <div className="flex flex-col items-center w-full min-h-screen bg-gradient-to-br from-blue-100 via-pink-100 to-yellow-100 p-4 gap-8 overflow-hidden">
+    <div className="flex flex-col items-center w-full min-h-screen bg-gradient-to-br from-blue-100 via-pink-100 to-yellow-100 p-4 gap-8 overflow-hidden relative">
+      {/* File Menu - Top Right */}
+      <div className="absolute top-4 right-4 z-50 group">
+        <button className="px-4 py-2 bg-white/90 rounded-lg shadow-lg border-2 border-blue-400 font-semibold text-black hover:bg-blue-50 transition">
+          📁 File
+        </button>
+        
+        {/* Dropdown Menu */}
+        <div className="absolute right-0 mt-2 w-48 bg-white/95 rounded-lg shadow-2xl border-2 border-blue-400 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+          {/* Load Image */}
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full px-4 py-3 text-left hover:bg-blue-100 transition font-semibold text-black border-b border-gray-200"
+          >
+            📂 Load Image
+          </button>
+          
+          {/* Save submenu */}
+          <div className="relative group/save">
+            <button className="w-full px-4 py-3 text-left hover:bg-blue-100 transition font-semibold text-black flex justify-between items-center">
+              💾 Save As
+              <span className="text-xs">▶</span>
+            </button>
+            
+            {/* Save format submenu */}
+            <div className="absolute left-full top-0 ml-1 w-40 bg-white/95 rounded-lg shadow-2xl border-2 border-blue-400 overflow-hidden opacity-0 invisible group-hover/save:opacity-100 group-hover/save:visible transition-all duration-200">
+              <button 
+                onClick={() => handleExport('png')}
+                className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black border-b border-gray-200"
+              >
+                PNG
+              </button>
+              <button 
+                onClick={() => handleExport('jpeg')}
+                className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black border-b border-gray-200"
+              >
+                JPEG
+              </button>
+              <button 
+                onClick={() => handleExport('webp')}
+                className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black border-b border-gray-200"
+              >
+                WebP
+              </button>
+              <button 
+                onClick={() => handleExport('svg')}
+                className="w-full px-4 py-2 text-left hover:bg-blue-100 transition text-sm font-semibold text-black"
+              >
+                SVG
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Preview at the top, outside the control panel */}
       <div className="mb-6">
         <div className="font-bold mb-1 text-black text-center">Preview</div>
@@ -488,8 +569,6 @@ export default function PixelArtGenerator() {
               </div>
             </div>
           )}
-          <button onClick={handleExport} className="px-2 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-semibold border-2 border-blue-700">Export PNG</button>
-          <button onClick={() => fileInputRef.current?.click()} className="px-2 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-semibold border-2 border-green-700">Load Texture</button>
           <button onClick={handleReset} className="px-2 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500 font-semibold border-2 border-yellow-600">Reset</button>
           <input type="file" accept="image/*" ref={fileInputRef} onChange={handleLoadTexture} className="hidden" />
         </div>
