@@ -58,4 +58,3 @@ export const GameMenu: React.FC<GameMenuProps> = ({
     </div>
   );
 };
-m
