@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "react-router";
 import { useTiles } from "../hooks/useTiles";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -57,6 +57,9 @@ export default function MapEditor() {
   const [activeTransform, setActiveTransform] = useState<TileTransform>({ rotation: 0, flipH: false, flipV: false });
   const [mouseDown, setMouseDown] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Cache for tile images to avoid regenerating them
+  const tileImageCache = useRef<Map<string, string>>(new Map());
 
   // Set brown theme on mount
   useEffect(() => {
@@ -97,6 +100,11 @@ export default function MapEditor() {
     };
   }, []);
 
+  // Clear tile image cache when tiles change
+  useEffect(() => {
+    tileImageCache.current.clear();
+  }, [tiles]);
+
   const handleCellClick = (x: number, y: number) => {
     if (!selectedTileId) return;
     
@@ -120,11 +128,20 @@ export default function MapEditor() {
     });
   };
 
-  const getTileImage = (tileId: string, transform?: TileTransform) => {
+  const getTileImage = useCallback((tileId: string, transform?: TileTransform) => {
+    const actualTransform = transform || { rotation: 0, flipH: false, flipV: false };
+    
+    // Create cache key from tileId and transform
+    const cacheKey = `${tileId}_${actualTransform.rotation}_${actualTransform.flipH}_${actualTransform.flipV}`;
+    
+    // Check cache first
+    const cached = tileImageCache.current.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const tile = getTile(tileId);
     if (!tile) return null;
-
-    const actualTransform = transform || { rotation: 0, flipH: false, flipV: false };
 
     // Create a canvas to render the tile
     const canvas = document.createElement('canvas');
@@ -159,8 +176,13 @@ export default function MapEditor() {
     }
 
     ctx.restore();
-    return canvas.toDataURL();
-  };
+    const dataUrl = canvas.toDataURL();
+    
+    // Store in cache
+    tileImageCache.current.set(cacheKey, dataUrl);
+    
+    return dataUrl;
+  }, [getTile]);
 
   const handleMouseDown = (x: number, y: number) => {
     setMouseDown(true);
