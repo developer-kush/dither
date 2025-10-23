@@ -193,6 +193,7 @@ export default function MapEditor() {
           gridColumn: x + 1,
           gridRow: y + 1,
           border: cellData ? 'none' : '1px solid rgba(0,0,0,0.1)',
+          userSelect: 'none',
         }}
         onMouseDown={() => handleMouseDown(x, y)}
         onMouseEnter={() => handleMouseEnter(x, y)}
@@ -204,7 +205,7 @@ export default function MapEditor() {
             src={tileImage}
             alt="tile"
             className="w-full h-full"
-            style={{ imageRendering: 'pixelated' }}
+            style={{ imageRendering: 'pixelated', pointerEvents: 'none' }}
           />
         )}
       </div>
@@ -376,6 +377,7 @@ export default function MapEditor() {
             gridTemplateRows: `repeat(${GRID_SIZE}, ${CELL_SIZE}px)`,
             minWidth: GRID_SIZE * CELL_SIZE,
             minHeight: GRID_SIZE * CELL_SIZE,
+            userSelect: 'none',
           }}
         >
           {Array.from({ length: GRID_SIZE }, (_, y) =>
