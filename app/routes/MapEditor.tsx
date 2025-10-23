@@ -132,18 +132,19 @@ export default function MapEditor() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    // Apply transformations
+    // Apply transformations: scale (flip) first, then rotate
+    // This ensures flips always work relative to the original tile, not the rotated version
     ctx.save();
     ctx.translate(tile.size / 2, tile.size / 2);
     
-    // Apply rotation
-    ctx.rotate((actualTransform.rotation * Math.PI) / 180);
-    
-    // Apply flips
+    // Apply flips first (these will be applied to the original image)
     ctx.scale(
       actualTransform.flipH ? -1 : 1,
       actualTransform.flipV ? -1 : 1
     );
+    
+    // Then apply rotation (this rotates the already-flipped image)
+    ctx.rotate((actualTransform.rotation * Math.PI) / 180);
     
     ctx.translate(-tile.size / 2, -tile.size / 2);
 
@@ -333,19 +334,6 @@ export default function MapEditor() {
                 <GameButton
                   icon
                   onClick={() => {
-                    // Flip vertically
-                    setActiveTransform(prev => ({
-                      ...prev,
-                      flipV: !prev.flipV
-                    }));
-                  }}
-                  title="Flip Vertical"
-                >
-                  <span className="text-lg font-bold">⇅</span>
-                </GameButton>
-                <GameButton
-                  icon
-                  onClick={() => {
                     // Reset transform
                     setActiveTransform({ rotation: 0, flipH: false, flipV: false });
                   }}
@@ -388,7 +376,7 @@ export default function MapEditor() {
                 {tiles.find(t => t.id === selectedTileId)?.name || 'Unknown'}
               </div>
               <div className="text-[9px] mt-1 text-center opacity-60 font-mono">
-                {activeTransform.rotation}° {activeTransform.flipH ? 'H' : ''} {activeTransform.flipV ? 'V' : ''}
+                {activeTransform.rotation}° {activeTransform.flipH ? 'Flipped' : ''}
               </div>
             </div>
           </div>
