@@ -216,18 +216,6 @@ export default function MapEditor() {
       {/* Navbar */}
       <NavBar 
         title="Map Editor"
-        rightActions={
-          <Link 
-            to="/tile-editor" 
-            className="px-4 py-2 border-2 border-black hover:translate-x-0.5 hover:translate-y-0.5 transition-transform"
-            style={{ 
-              backgroundColor: 'var(--theme-accent)',
-              boxShadow: '3px 3px 0 #000'
-            }}
-          >
-            Tile Editor
-          </Link>
-        }
       />
 
       {/* Tile Palette - Left Sidebar */}

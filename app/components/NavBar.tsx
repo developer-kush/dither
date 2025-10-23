@@ -26,26 +26,30 @@ export const NavBar: React.FC<NavBarProps> = ({
         {/* Dropdown Menu */}
         {showDropdown && (
           <div 
-            className="absolute top-full left-0 mt-2 min-w-[200px] border-2 border-black"
-            style={{ 
-              backgroundColor: 'var(--theme-bg-medium)',
-              boxShadow: '4px 4px 0 #000'
-            }}
+            className="absolute top-full left-0 pt-2"
           >
-            <Link 
-              to="/tile-editor"
-              className="block px-4 py-3 border-b-2 border-black hover:bg-[var(--theme-accent)] transition-colors"
+            <div
+              className="min-w-[200px] border-2 border-black"
+              style={{ 
+                backgroundColor: 'var(--theme-bg-medium)',
+                boxShadow: '4px 4px 0 #000'
+              }}
             >
-              <div className="font-bold">Tile Editor</div>
-              <div className="text-xs opacity-60">Create pixel art tiles</div>
-            </Link>
-            <Link 
-              to="/map-editor"
-              className="block px-4 py-3 hover:bg-[var(--theme-accent)] transition-colors"
-            >
-              <div className="font-bold">Map Editor</div>
-              <div className="text-xs opacity-60">Build maps with tiles</div>
-            </Link>
+              <Link 
+                to="/tile-editor"
+                className="block px-4 py-3 border-b-2 border-black hover:bg-[var(--theme-accent)] transition-colors"
+              >
+                <div className="font-bold">Tile Editor</div>
+                <div className="text-xs opacity-60">Create pixel art tiles</div>
+              </Link>
+              <Link 
+                to="/map-editor"
+                className="block px-4 py-3 hover:bg-[var(--theme-accent)] transition-colors"
+              >
+                <div className="font-bold">Map Editor</div>
+                <div className="text-xs opacity-60">Build maps with tiles</div>
+              </Link>
+            </div>
           </div>
         )}
       </div>
