@@ -14,7 +14,7 @@ export default function Home() {
       <div className="text-center space-y-8 p-8">
         <pre className="text-4xl font-mono leading-tight font-bold text-white">
 {`
-▓█████▄  ██▓ ▄▄█████▓ ██░ ██ ▓█████  ██▀███  
+▓█████▄  ██▓  ▄▄█████▓ ██░ ██ ▓█████  ██▀███  
 ▒██▀ ██▌▓██▒ ▓ ███▒  ▒▓██░ ██▒▓█   ▀ ▓██ ▒ ██▒
 ░██   █▌▒██▒▒  ▓██░   ▒██▀▀██░▒███   ▓██ ░▄█ ▒
 ░▓█▄  █▌░██░░  ▓██▓   ░▓█ ░██ ▒▓█  ▄ ▒██▀▀█▄  
