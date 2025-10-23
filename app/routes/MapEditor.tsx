@@ -4,6 +4,7 @@ import { useTiles } from "../hooks/useTiles";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { GameButton } from "../components/GameButton";
 import { GameIcon } from "../components/GameIcon";
+import { NavBar } from "../components/NavBar";
 
 export function meta() {
   return [
@@ -213,24 +214,21 @@ export default function MapEditor() {
   return (
     <div className="w-full h-screen flex" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
       {/* Navbar */}
-      <div className="fixed top-0 left-0 right-0 h-16 border-b-2 border-black z-50 flex items-center justify-between px-8 pointer-events-auto" style={{ backgroundColor: 'var(--theme-bg-medium)', pointerEvents: 'auto' }}>
-      <Link to="/" className="hover:opacity-80 text-3xl font-extrabold px-5 transition-opacity">
-        Dither
-      </Link>
-        
-        <div className="text-xl font-bold">Map Editor</div>
-
-        <Link 
-          to="/tile-editor" 
-          className="px-4 py-2 border-2 border-black hover:translate-x-0.5 hover:translate-y-0.5 transition-transform"
-          style={{ 
-            backgroundColor: 'var(--theme-accent)',
-            boxShadow: '3px 3px 0 #000'
-          }}
-        >
-          Tile Editor
-        </Link>
-      </div>
+      <NavBar 
+        title="Map Editor"
+        rightActions={
+          <Link 
+            to="/tile-editor" 
+            className="px-4 py-2 border-2 border-black hover:translate-x-0.5 hover:translate-y-0.5 transition-transform"
+            style={{ 
+              backgroundColor: 'var(--theme-accent)',
+              boxShadow: '3px 3px 0 #000'
+            }}
+          >
+            Tile Editor
+          </Link>
+        }
+      />
 
       {/* Tile Palette - Left Sidebar */}
       <div 

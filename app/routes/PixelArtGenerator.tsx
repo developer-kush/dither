@@ -754,9 +754,23 @@ export default function PixelArtGenerator() {
 
       {/* NavBar */}
       <NavBar 
-        onExport={handleExport}
-        onReset={handleReset}
-        onLoadClick={() => fileInputRef.current?.click()}
+        title="Tile Editor"
+        rightActions={
+          <>
+            <GameButton onClick={() => fileInputRef.current?.click()}>
+              Load Image
+            </GameButton>
+            <GameButton onClick={() => handleExport('png')}>
+              Export PNG
+            </GameButton>
+            <GameButton onClick={() => handleExport('svg')}>
+              Export SVG
+            </GameButton>
+            <GameButton onClick={handleReset}>
+              Reset
+            </GameButton>
+          </>
+        }
       />
 
       {/* Main Canvas Area */}
