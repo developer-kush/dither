@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
 import { useTiles } from "../hooks/useTiles";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import { GameButton } from "../components/GameButton";
+import { GameIcon } from "../components/GameIcon";
 
 export function meta() {
   return [
@@ -15,6 +17,13 @@ interface MapCell {
   x: number;
   y: number;
 }
+
+type Tool = 'draw' | 'rotate' | 'flip';
+type TileTransform = {
+  rotation: number; // 0, 90, 180, 270
+  flipH: boolean;
+  flipV: boolean;
+};
 
 const CELL_SIZE = 64; // Size of each cell in pixels
 const GRID_SIZE = 100; // Number of cells in each direction
@@ -31,6 +40,8 @@ export default function MapEditor() {
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [draggedTileId, setDraggedTileId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [mouseDown, setMouseDown] = useState(false);
+  const [currentTool, setCurrentTool] = useState<Tool>('draw');
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   // Set brown theme on mount
@@ -60,8 +71,29 @@ export default function MapEditor() {
   }, []);
 
   const handleCellClick = (x: number, y: number) => {
-    if (selectedTileId) {
-      const key = `${x},${y}`;
+    if (!selectedTileId) return;
+    
+    const key = `${x},${y}`;
+    
+    if (currentTool === 'draw') {
+      setMap(prev => {
+        const newMap = new Map(prev);
+        newMap.set(key, selectedTileId);
+        return newMap;
+      });
+    } else if (currentTool === 'rotate') {
+      // Rotate the tile at this position (cycle through 0, 90, 180, 270)
+      // For now, we'll just use the draw functionality
+      // TODO: Implement rotation transform storage
+      setMap(prev => {
+        const newMap = new Map(prev);
+        newMap.set(key, selectedTileId);
+        return newMap;
+      });
+    } else if (currentTool === 'flip') {
+      // Flip the tile at this position
+      // For now, we'll just use the draw functionality
+      // TODO: Implement flip transform storage
       setMap(prev => {
         const newMap = new Map(prev);
         newMap.set(key, selectedTileId);
@@ -127,6 +159,21 @@ export default function MapEditor() {
     return canvas.toDataURL();
   };
 
+  const handleMouseDown = (x: number, y: number) => {
+    setMouseDown(true);
+    handleCellClick(x, y);
+  };
+
+  const handleMouseEnter = (x: number, y: number) => {
+    if (mouseDown && currentTool === 'draw') {
+      handleCellClick(x, y);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setMouseDown(false);
+  };
+
   const renderCell = (x: number, y: number) => {
     const key = `${x},${y}`;
     const tileId = map.get(key);
@@ -143,7 +190,9 @@ export default function MapEditor() {
           gridRow: y + 1,
           border: tileId ? 'none' : '1px solid rgba(0,0,0,0.1)',
         }}
-        onClick={() => handleCellClick(x, y)}
+        onMouseDown={() => handleMouseDown(x, y)}
+        onMouseEnter={() => handleMouseEnter(x, y)}
+        onMouseUp={handleMouseUp}
         onContextMenu={(e) => handleCellRightClick(e, x, y)}
         onDragStart={() => handleCellDragStart(x, y)}
         onDragOver={handleCellDragOver}
@@ -238,7 +287,73 @@ export default function MapEditor() {
         style={{ 
           backgroundColor: 'var(--theme-bg-light)',
         }}
+        onMouseLeave={handleMouseUp}
       >
+        {/* Active Tile Display - Top Right */}
+        {selectedTileId && (
+          <div 
+            className="fixed top-20 right-8 z-20 p-3 border-2 border-black"
+            style={{ 
+              backgroundColor: 'var(--theme-bg-medium)',
+              boxShadow: '4px 4px 0 #000'
+            }}
+          >
+            <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-2 text-center">
+              Active Tile
+            </div>
+            <div 
+              className="border-2 border-black p-2"
+              style={{ 
+                backgroundColor: 'var(--theme-bg-panel)',
+                width: '96px',
+                height: '96px'
+              }}
+            >
+              {getTileImage(selectedTileId) && (
+                <img
+                  src={getTileImage(selectedTileId)!}
+                  alt="active tile"
+                  className="w-full h-full"
+                  style={{ imageRendering: 'pixelated' }}
+                />
+              )}
+            </div>
+            <div className="text-xs mt-2 text-center truncate max-w-[96px]">
+              {tiles.find(t => t.id === selectedTileId)?.name || 'Unknown'}
+            </div>
+          </div>
+        )}
+
+        {/* Tool Belt - Right Side */}
+        <div 
+          className="fixed right-8 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2"
+        >
+          <GameButton
+            icon
+            style={currentTool === 'draw' ? { backgroundColor: 'var(--theme-accent)' } : {}}
+            onClick={() => setCurrentTool('draw')}
+            title="Draw Tool"
+          >
+            <GameIcon type="pencil" />
+          </GameButton>
+          <GameButton
+            icon
+            style={currentTool === 'rotate' ? { backgroundColor: 'var(--theme-accent)' } : {}}
+            onClick={() => setCurrentTool('rotate')}
+            title="Rotate Tool"
+          >
+            <span className="text-lg font-bold">↻</span>
+          </GameButton>
+          <GameButton
+            icon
+            style={currentTool === 'flip' ? { backgroundColor: 'var(--theme-accent)' } : {}}
+            onClick={() => setCurrentTool('flip')}
+            title="Flip Tool"
+          >
+            <span className="text-lg font-bold">⇄</span>
+          </GameButton>
+        </div>
+
         <div
           className="inline-grid"
           style={{
