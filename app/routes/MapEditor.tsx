@@ -18,7 +18,6 @@ interface MapCell {
   y: number;
 }
 
-type Tool = 'draw' | 'rotate' | 'flip';
 type TileTransform = {
   rotation: number; // 0, 90, 180, 270
   flipH: boolean;
@@ -31,17 +30,33 @@ const GRID_SIZE = 100; // Number of cells in each direction
 export default function MapEditor() {
   const { tiles, getTile } = useTiles();
   
-  // Load map from localStorage
+  // Load map from localStorage - now stores both tileId and transform
   const [mapData, setMapData] = useLocalStorage<Array<[string, string]>>('map-editor-data', []);
-  const [map, setMap] = useState<Map<string, string | null>>(() => {
-    return new Map(mapData);
+  const [map, setMap] = useState<Map<string, { tileId: string; transform: TileTransform }>>(() => {
+    // Migrate old data format if needed
+    const newMap = new Map<string, { tileId: string; transform: TileTransform }>();
+    mapData.forEach(([key, value]) => {
+      try {
+        const parsed = JSON.parse(value);
+        if (parsed.tileId) {
+          newMap.set(key, parsed);
+        } else {
+          // Old format - just a tileId string
+          newMap.set(key, { tileId: value, transform: { rotation: 0, flipH: false, flipV: false } });
+        }
+      } catch {
+        // Old format - just a tileId string
+        newMap.set(key, { tileId: value, transform: { rotation: 0, flipH: false, flipV: false } });
+      }
+    });
+    return newMap;
   });
   
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
+  const [activeTransform, setActiveTransform] = useState<TileTransform>({ rotation: 0, flipH: false, flipV: false });
   const [draggedTileId, setDraggedTileId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [mouseDown, setMouseDown] = useState(false);
-  const [currentTool, setCurrentTool] = useState<Tool>('draw');
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   // Set brown theme on mount
@@ -56,7 +71,8 @@ export default function MapEditor() {
 
   // Save map to localStorage whenever it changes
   useEffect(() => {
-    setMapData(Array.from(map.entries()));
+    const entries = Array.from(map.entries()).map(([key, value]) => [key, JSON.stringify(value)]);
+    setMapData(entries as Array<[string, string]>);
   }, [map]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Center the viewport on mount
@@ -75,31 +91,12 @@ export default function MapEditor() {
     
     const key = `${x},${y}`;
     
-    if (currentTool === 'draw') {
-      setMap(prev => {
-        const newMap = new Map(prev);
-        newMap.set(key, selectedTileId);
-        return newMap;
-      });
-    } else if (currentTool === 'rotate') {
-      // Rotate the tile at this position (cycle through 0, 90, 180, 270)
-      // For now, we'll just use the draw functionality
-      // TODO: Implement rotation transform storage
-      setMap(prev => {
-        const newMap = new Map(prev);
-        newMap.set(key, selectedTileId);
-        return newMap;
-      });
-    } else if (currentTool === 'flip') {
-      // Flip the tile at this position
-      // For now, we'll just use the draw functionality
-      // TODO: Implement flip transform storage
-      setMap(prev => {
-        const newMap = new Map(prev);
-        newMap.set(key, selectedTileId);
-        return newMap;
-      });
-    }
+    // Draw with current active tile and transform
+    setMap(prev => {
+      const newMap = new Map(prev);
+      newMap.set(key, { tileId: selectedTileId, transform: { ...activeTransform } });
+      return newMap;
+    });
   };
 
   const handleCellRightClick = (e: React.MouseEvent, x: number, y: number) => {
@@ -114,9 +111,9 @@ export default function MapEditor() {
 
   const handleCellDragStart = (x: number, y: number) => {
     const key = `${x},${y}`;
-    const tileId = map.get(key);
-    if (tileId) {
-      setDraggedTileId(tileId);
+    const cellData = map.get(key);
+    if (cellData) {
+      setDraggedTileId(cellData.tileId);
     }
   };
 
@@ -129,16 +126,18 @@ export default function MapEditor() {
       const key = `${x},${y}`;
       setMap(prev => {
         const newMap = new Map(prev);
-        newMap.set(key, draggedTileId);
+        newMap.set(key, { tileId: draggedTileId, transform: { rotation: 0, flipH: false, flipV: false } });
         return newMap;
       });
     }
     setDraggedTileId(null);
   };
 
-  const getTileImage = (tileId: string) => {
+  const getTileImage = (tileId: string, transform?: TileTransform) => {
     const tile = getTile(tileId);
     if (!tile) return null;
+
+    const actualTransform = transform || { rotation: 0, flipH: false, flipV: false };
 
     // Create a canvas to render the tile
     const canvas = document.createElement('canvas');
@@ -146,6 +145,21 @@ export default function MapEditor() {
     canvas.height = tile.size;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
+
+    // Apply transformations
+    ctx.save();
+    ctx.translate(tile.size / 2, tile.size / 2);
+    
+    // Apply rotation
+    ctx.rotate((actualTransform.rotation * Math.PI) / 180);
+    
+    // Apply flips
+    ctx.scale(
+      actualTransform.flipH ? -1 : 1,
+      actualTransform.flipV ? -1 : 1
+    );
+    
+    ctx.translate(-tile.size / 2, -tile.size / 2);
 
     // Draw the tile
     for (let y = 0; y < tile.size; y++) {
@@ -156,6 +170,7 @@ export default function MapEditor() {
       }
     }
 
+    ctx.restore();
     return canvas.toDataURL();
   };
 
@@ -165,7 +180,7 @@ export default function MapEditor() {
   };
 
   const handleMouseEnter = (x: number, y: number) => {
-    if (mouseDown && currentTool === 'draw') {
+    if (mouseDown) {
       handleCellClick(x, y);
     }
   };
@@ -176,8 +191,8 @@ export default function MapEditor() {
 
   const renderCell = (x: number, y: number) => {
     const key = `${x},${y}`;
-    const tileId = map.get(key);
-    const tileImage = tileId ? getTileImage(tileId) : null;
+    const cellData = map.get(key);
+    const tileImage = cellData ? getTileImage(cellData.tileId, cellData.transform) : null;
 
     return (
       <div
@@ -188,7 +203,7 @@ export default function MapEditor() {
           height: CELL_SIZE,
           gridColumn: x + 1,
           gridRow: y + 1,
-          border: tileId ? 'none' : '1px solid rgba(0,0,0,0.1)',
+          border: cellData ? 'none' : '1px solid rgba(0,0,0,0.1)',
         }}
         onMouseDown={() => handleMouseDown(x, y)}
         onMouseEnter={() => handleMouseEnter(x, y)}
@@ -197,7 +212,7 @@ export default function MapEditor() {
         onDragStart={() => handleCellDragStart(x, y)}
         onDragOver={handleCellDragOver}
         onDrop={() => handleCellDrop(x, y)}
-        draggable={!!tileId}
+        draggable={!!cellData}
       >
         {tileImage && (
           <img
@@ -260,7 +275,10 @@ export default function MapEditor() {
                     backgroundColor: 'var(--theme-bg-medium)',
                     boxShadow: '2px 2px 0 #000'
                   }}
-                  onClick={() => setSelectedTileId(tile.id)}
+                  onClick={() => {
+                    setSelectedTileId(tile.id);
+                    setActiveTransform({ rotation: 0, flipH: false, flipV: false });
+                  }}
                   draggable
                   onDragStart={() => setDraggedTileId(tile.id)}
                 >
@@ -309,9 +327,9 @@ export default function MapEditor() {
                 height: '96px'
               }}
             >
-              {getTileImage(selectedTileId) && (
+              {getTileImage(selectedTileId, activeTransform) && (
                 <img
-                  src={getTileImage(selectedTileId)!}
+                  src={getTileImage(selectedTileId, activeTransform)!}
                   alt="active tile"
                   className="w-full h-full"
                   style={{ imageRendering: 'pixelated' }}
@@ -320,6 +338,9 @@ export default function MapEditor() {
             </div>
             <div className="text-xs mt-2 text-center truncate max-w-[96px]">
               {tiles.find(t => t.id === selectedTileId)?.name || 'Unknown'}
+            </div>
+            <div className="text-[9px] mt-1 text-center opacity-60 font-mono">
+              {activeTransform.rotation}° {activeTransform.flipH ? 'H' : ''} {activeTransform.flipV ? 'V' : ''}
             </div>
           </div>
         )}
@@ -330,27 +351,52 @@ export default function MapEditor() {
         >
           <GameButton
             icon
-            style={currentTool === 'draw' ? { backgroundColor: 'var(--theme-accent)' } : {}}
-            onClick={() => setCurrentTool('draw')}
-            title="Draw Tool"
-          >
-            <GameIcon type="pencil" />
-          </GameButton>
-          <GameButton
-            icon
-            style={currentTool === 'rotate' ? { backgroundColor: 'var(--theme-accent)' } : {}}
-            onClick={() => setCurrentTool('rotate')}
-            title="Rotate Tool"
+            onClick={() => {
+              // Rotate the active transform by 90 degrees (cycle through 0, 90, 180, 270)
+              setActiveTransform(prev => ({
+                ...prev,
+                rotation: (prev.rotation + 90) % 360
+              }));
+            }}
+            title="Rotate Active Tile (90°)"
           >
             <span className="text-lg font-bold">↻</span>
           </GameButton>
           <GameButton
             icon
-            style={currentTool === 'flip' ? { backgroundColor: 'var(--theme-accent)' } : {}}
-            onClick={() => setCurrentTool('flip')}
-            title="Flip Tool"
+            onClick={() => {
+              // Flip horizontally
+              setActiveTransform(prev => ({
+                ...prev,
+                flipH: !prev.flipH
+              }));
+            }}
+            title="Flip Horizontal"
           >
             <span className="text-lg font-bold">⇄</span>
+          </GameButton>
+          <GameButton
+            icon
+            onClick={() => {
+              // Flip vertically
+              setActiveTransform(prev => ({
+                ...prev,
+                flipV: !prev.flipV
+              }));
+            }}
+            title="Flip Vertical"
+          >
+            <span className="text-lg font-bold">⇅</span>
+          </GameButton>
+          <GameButton
+            icon
+            onClick={() => {
+              // Reset transform
+              setActiveTransform({ rotation: 0, flipH: false, flipV: false });
+            }}
+            title="Reset Transform"
+          >
+            <span className="text-lg font-bold">⟲</span>
           </GameButton>
         </div>
 
