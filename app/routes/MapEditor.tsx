@@ -54,8 +54,6 @@ export default function MapEditor() {
   
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [activeTransform, setActiveTransform] = useState<TileTransform>({ rotation: 0, flipH: false, flipV: false });
-  const [draggedTileId, setDraggedTileId] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const [mouseDown, setMouseDown] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -86,6 +84,18 @@ export default function MapEditor() {
     }
   }, []);
 
+  // Global mouse up handler to ensure mouseDown is reset even when mouse is released outside grid
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      setMouseDown(false);
+    };
+    
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, []);
+
   const handleCellClick = (x: number, y: number) => {
     if (!selectedTileId) return;
     
@@ -107,30 +117,6 @@ export default function MapEditor() {
       newMap.delete(key);
       return newMap;
     });
-  };
-
-  const handleCellDragStart = (x: number, y: number) => {
-    const key = `${x},${y}`;
-    const cellData = map.get(key);
-    if (cellData) {
-      setDraggedTileId(cellData.tileId);
-    }
-  };
-
-  const handleCellDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleCellDrop = (x: number, y: number) => {
-    if (draggedTileId) {
-      const key = `${x},${y}`;
-      setMap(prev => {
-        const newMap = new Map(prev);
-        newMap.set(key, { tileId: draggedTileId, transform: { rotation: 0, flipH: false, flipV: false } });
-        return newMap;
-      });
-    }
-    setDraggedTileId(null);
   };
 
   const getTileImage = (tileId: string, transform?: TileTransform) => {
@@ -209,10 +195,6 @@ export default function MapEditor() {
         onMouseEnter={() => handleMouseEnter(x, y)}
         onMouseUp={handleMouseUp}
         onContextMenu={(e) => handleCellRightClick(e, x, y)}
-        onDragStart={() => handleCellDragStart(x, y)}
-        onDragOver={handleCellDragOver}
-        onDrop={() => handleCellDrop(x, y)}
-        draggable={!!cellData}
       >
         {tileImage && (
           <img
@@ -279,8 +261,6 @@ export default function MapEditor() {
                     setSelectedTileId(tile.id);
                     setActiveTransform({ rotation: 0, flipH: false, flipV: false });
                   }}
-                  draggable
-                  onDragStart={() => setDraggedTileId(tile.id)}
                 >
                   {tileImage && (
                     <img
@@ -307,98 +287,112 @@ export default function MapEditor() {
         }}
         onMouseLeave={handleMouseUp}
       >
-        {/* Active Tile Display - Top Right */}
+        {/* Active Tile Display & Modifiers - Top Right */}
         {selectedTileId && (
           <div 
-            className="fixed top-20 right-8 z-20 p-3 border-2 border-black"
-            style={{ 
-              backgroundColor: 'var(--theme-bg-medium)',
-              boxShadow: '4px 4px 0 #000'
-            }}
+            className="fixed top-20 right-8 z-20 flex gap-3"
           >
-            <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-2 text-center">
-              Active Tile
-            </div>
+            {/* Modifiers Panel */}
             <div 
-              className="border-2 border-black p-2"
+              className="p-3 border-2 border-black"
               style={{ 
-                backgroundColor: 'var(--theme-bg-panel)',
-                width: '96px',
-                height: '96px'
+                backgroundColor: 'var(--theme-bg-medium)',
+                boxShadow: '4px 4px 0 #000'
               }}
             >
-              {getTileImage(selectedTileId, activeTransform) && (
-                <img
-                  src={getTileImage(selectedTileId, activeTransform)!}
-                  alt="active tile"
-                  className="w-full h-full"
-                  style={{ imageRendering: 'pixelated' }}
-                />
-              )}
+              <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-2 text-center">
+                Modifiers
+              </div>
+              <div className="flex flex-col gap-2">
+                <GameButton
+                  icon
+                  onClick={() => {
+                    // Rotate the active transform by 90 degrees (cycle through 0, 90, 180, 270)
+                    setActiveTransform(prev => ({
+                      ...prev,
+                      rotation: (prev.rotation + 90) % 360
+                    }));
+                  }}
+                  title="Rotate Active Tile (90°)"
+                >
+                  <span className="text-lg font-bold">↻</span>
+                </GameButton>
+                <GameButton
+                  icon
+                  onClick={() => {
+                    // Flip horizontally
+                    setActiveTransform(prev => ({
+                      ...prev,
+                      flipH: !prev.flipH
+                    }));
+                  }}
+                  title="Flip Horizontal"
+                >
+                  <span className="text-lg font-bold">⇄</span>
+                </GameButton>
+                <GameButton
+                  icon
+                  onClick={() => {
+                    // Flip vertically
+                    setActiveTransform(prev => ({
+                      ...prev,
+                      flipV: !prev.flipV
+                    }));
+                  }}
+                  title="Flip Vertical"
+                >
+                  <span className="text-lg font-bold">⇅</span>
+                </GameButton>
+                <GameButton
+                  icon
+                  onClick={() => {
+                    // Reset transform
+                    setActiveTransform({ rotation: 0, flipH: false, flipV: false });
+                  }}
+                  title="Reset Transform"
+                >
+                  <span className="text-lg font-bold">⟲</span>
+                </GameButton>
+              </div>
             </div>
-            <div className="text-xs mt-2 text-center truncate max-w-[96px]">
-              {tiles.find(t => t.id === selectedTileId)?.name || 'Unknown'}
-            </div>
-            <div className="text-[9px] mt-1 text-center opacity-60 font-mono">
-              {activeTransform.rotation}° {activeTransform.flipH ? 'H' : ''} {activeTransform.flipV ? 'V' : ''}
+
+            {/* Active Tile Display */}
+            <div 
+              className="p-3 border-2 border-black"
+              style={{ 
+                backgroundColor: 'var(--theme-bg-medium)',
+                boxShadow: '4px 4px 0 #000'
+              }}
+            >
+              <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-2 text-center">
+                Active Tile
+              </div>
+              <div 
+                className="border-2 border-black p-2"
+                style={{ 
+                  backgroundColor: 'var(--theme-bg-panel)',
+                  width: '96px',
+                  height: '96px'
+                }}
+              >
+                {getTileImage(selectedTileId, activeTransform) && (
+                  <img
+                    src={getTileImage(selectedTileId, activeTransform)!}
+                    alt="active tile"
+                    className="w-full h-full"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
+                )}
+              </div>
+              <div className="text-xs mt-2 text-center truncate max-w-[96px]">
+                {tiles.find(t => t.id === selectedTileId)?.name || 'Unknown'}
+              </div>
+              <div className="text-[9px] mt-1 text-center opacity-60 font-mono">
+                {activeTransform.rotation}° {activeTransform.flipH ? 'H' : ''} {activeTransform.flipV ? 'V' : ''}
+              </div>
             </div>
           </div>
         )}
-
-        {/* Tool Belt - Right Side */}
-        <div 
-          className="fixed right-8 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2"
-        >
-          <GameButton
-            icon
-            onClick={() => {
-              // Rotate the active transform by 90 degrees (cycle through 0, 90, 180, 270)
-              setActiveTransform(prev => ({
-                ...prev,
-                rotation: (prev.rotation + 90) % 360
-              }));
-            }}
-            title="Rotate Active Tile (90°)"
-          >
-            <span className="text-lg font-bold">↻</span>
-          </GameButton>
-          <GameButton
-            icon
-            onClick={() => {
-              // Flip horizontally
-              setActiveTransform(prev => ({
-                ...prev,
-                flipH: !prev.flipH
-              }));
-            }}
-            title="Flip Horizontal"
-          >
-            <span className="text-lg font-bold">⇄</span>
-          </GameButton>
-          <GameButton
-            icon
-            onClick={() => {
-              // Flip vertically
-              setActiveTransform(prev => ({
-                ...prev,
-                flipV: !prev.flipV
-              }));
-            }}
-            title="Flip Vertical"
-          >
-            <span className="text-lg font-bold">⇅</span>
-          </GameButton>
-          <GameButton
-            icon
-            onClick={() => {
-              // Reset transform
-              setActiveTransform({ rotation: 0, flipH: false, flipV: false });
-            }}
-            title="Reset Transform"
-          >
-            <span className="text-lg font-bold">⟲</span>
-          </GameButton>
-        </div>
 
         <div
           className="inline-grid"
