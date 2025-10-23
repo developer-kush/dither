@@ -176,6 +176,7 @@ export default function MapEditor() {
     setMouseDown(false);
   };
 
+  // Render a single cell in the grid
   const renderCell = (x: number, y: number) => {
     const key = `${x},${y}`;
     const cellData = map.get(key);
