@@ -166,6 +166,10 @@ export function useTiles() {
     return tiles.find(tile => tile.id === id);
   };
 
+  const loadAllTiles = (newTiles: Tile[]) => {
+    setTiles(newTiles);
+  };
+
   return {
     tiles,
     folders,
@@ -176,6 +180,7 @@ export function useTiles() {
     createFolder,
     renameFolder,
     deleteFolder,
+    loadAllTiles,
     isLoaded,
   };
 }
