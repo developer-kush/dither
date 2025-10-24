@@ -927,7 +927,7 @@ export default function PixelArtGenerator() {
           Preview
         </div>
         <div className="game-border p-2" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
-          <PixelArtPreview grid={grid} gridSize={gridSize} />
+          <PixelArtPreview grid={grid} gridSize={gridSize} windowPos={board.window} />
         </div>
       </div>
       
