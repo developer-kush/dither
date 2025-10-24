@@ -75,6 +75,31 @@ export default function MapEditor() {
     };
   }, [currentTool]);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input fields
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      const key = e.key.toLowerCase();
+      
+      // Cycle tools with F key: pen -> eraser -> pen
+      if (key === 'f') {
+        e.preventDefault();
+        setCurrentTool(prev => prev === 'pen' ? 'eraser' : 'pen');
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   // Save map to localStorage whenever it changes
   useEffect(() => {
     const entries = Array.from(map.entries()).map(([key, value]) => [key, JSON.stringify(value)]);
@@ -131,15 +156,6 @@ export default function MapEditor() {
     }
   };
 
-  const handleCellRightClick = (e: React.MouseEvent, x: number, y: number) => {
-    e.preventDefault();
-    const key = `${x},${y}`;
-    setMap(prev => {
-      const newMap = new Map(prev);
-      newMap.delete(key);
-      return newMap;
-    });
-  };
 
   const getTileImage = useCallback((tileId: string, transform?: TileTransform) => {
     const actualTransform = transform || { rotation: 0, flipH: false, flipV: false };
@@ -233,7 +249,6 @@ export default function MapEditor() {
         onMouseDown={() => handleMouseDown(x, y)}
         onMouseEnter={() => handleMouseEnter(x, y)}
         onMouseUp={handleMouseUp}
-        onContextMenu={(e) => handleCellRightClick(e, x, y)}
       >
         {tileImage && (
           <img
@@ -327,7 +342,7 @@ export default function MapEditor() {
         style={{ backgroundColor: 'var(--theme-bg-panel)' }}
       >
         <h2 className="text-lg font-bold mb-2">Tiles</h2>
-        <p className="text-[10px] opacity-60 mb-4">Right-click to remove tiles</p>
+        <p className="text-[10px] opacity-60 mb-4">Press F to toggle tools</p>
         
         {tiles.length === 0 ? (
           <div className="text-sm opacity-60 text-center">
