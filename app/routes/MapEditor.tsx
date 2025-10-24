@@ -28,6 +28,8 @@ type TileTransform = {
 const CELL_SIZE = 64; // Size of each cell in pixels
 const GRID_SIZE = 100; // Number of cells in each direction
 
+type Tool = 'pen' | 'eraser';
+
 export default function MapEditor() {
   const { tiles, getTile } = useTiles();
   
@@ -56,20 +58,22 @@ export default function MapEditor() {
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [activeTransform, setActiveTransform] = useState<TileTransform>({ rotation: 0, flipH: false, flipV: false });
   const [mouseDown, setMouseDown] = useState(false);
+  const [currentTool, setCurrentTool] = useState<Tool>('pen');
   const mapContainerRef = useRef<HTMLDivElement>(null);
   
   // Cache for tile images to avoid regenerating them
   const tileImageCache = useRef<Map<string, string>>(new Map());
 
-  // Set brown theme on mount
+  // Set theme based on current tool
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'brown');
+    const theme = currentTool === 'eraser' ? 'cyan' : 'brown';
+    document.documentElement.setAttribute('data-theme', theme);
     
     return () => {
       // Reset to default theme when leaving
       document.documentElement.setAttribute('data-theme', 'green');
     };
-  }, []);
+  }, [currentTool]);
 
   // Save map to localStorage whenever it changes
   useEffect(() => {
@@ -106,16 +110,25 @@ export default function MapEditor() {
   }, [tiles]);
 
   const handleCellClick = (x: number, y: number) => {
-    if (!selectedTileId) return;
-    
     const key = `${x},${y}`;
     
-    // Draw with current active tile and transform
-    setMap(prev => {
-      const newMap = new Map(prev);
-      newMap.set(key, { tileId: selectedTileId, transform: { ...activeTransform } });
-      return newMap;
-    });
+    if (currentTool === 'eraser') {
+      // Eraser mode - remove tile
+      setMap(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(key);
+        return newMap;
+      });
+    } else {
+      // Pen mode - draw tile
+      if (!selectedTileId) return;
+      
+      setMap(prev => {
+        const newMap = new Map(prev);
+        newMap.set(key, { tileId: selectedTileId, transform: { ...activeTransform } });
+        return newMap;
+      });
+    }
   };
 
   const handleCellRightClick = (e: React.MouseEvent, x: number, y: number) => {
@@ -240,6 +253,73 @@ export default function MapEditor() {
       <NavBar 
         title="Map Editor"
       />
+
+      {/* Right Menu - Tools */}
+      <div 
+        className="game-menu right open"
+        style={{
+          width: '200px',
+          transform: 'translateX(calc(100% - 16px))',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateX(0)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateX(calc(100% - 16px))';
+        }}
+      >
+        <div className="game-menu-content overflow-y-auto">
+          <div className="text-sm font-bold mb-3 uppercase tracking-wide opacity-60">
+            Tools
+          </div>
+          
+          {/* Pen Tool */}
+          <GameButton
+            onClick={() => setCurrentTool('pen')}
+            style={{
+              backgroundColor: currentTool === 'pen' ? 'var(--theme-accent)' : 'var(--theme-bg-light)',
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-xl">✏️</span>
+              <span>Pen</span>
+            </div>
+          </GameButton>
+
+          {/* Eraser Tool */}
+          <GameButton
+            onClick={() => setCurrentTool('eraser')}
+            style={{
+              backgroundColor: currentTool === 'eraser' ? 'var(--theme-accent)' : 'var(--theme-bg-light)',
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🧹</span>
+              <span>Eraser</span>
+            </div>
+          </GameButton>
+
+          {/* Tool Info */}
+          <div className="mt-4 p-3 border-2 border-black" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
+            <div className="text-[10px] opacity-60 uppercase tracking-wide mb-1">
+              Current Tool
+            </div>
+            <div className="text-sm font-bold capitalize">
+              {currentTool}
+            </div>
+            {currentTool === 'pen' && (
+              <div className="text-[9px] opacity-60 mt-1">
+                Click to place tiles
+              </div>
+            )}
+            {currentTool === 'eraser' && (
+              <div className="text-[9px] opacity-60 mt-1">
+                Click to remove tiles
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Tile Palette - Left Sidebar */}
       <div 
