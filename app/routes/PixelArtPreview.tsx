@@ -63,57 +63,6 @@ export const PixelArtPreview: React.FC<PixelArtPreviewProps> = ({ grid, gridSize
         ref={canvasRef}
         style={{ width: gridSize * scale, height: gridSize * scale, display: 'block', imageRendering: 'pixelated' }}
       />
-      {/* Center indicator - shows where the center of the full virtual board is */}
-      {centerVisible && (
-        <div 
-          style={{ 
-            position: 'absolute',
-            left: `${(centerInWindow.x / gridSize) * 100}%`,
-            top: `${(centerInWindow.y / gridSize) * 100}%`,
-            transform: 'translate(-50%, -50%)',
-            width: '2px',
-            height: '2px',
-            pointerEvents: 'none',
-            zIndex: 10
-          }}
-        >
-          {/* Horizontal line */}
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: `${Math.min(gridSize * scale * 0.15, 16)}px`,
-            height: '2px',
-            backgroundColor: 'rgba(255, 50, 50, 0.9)',
-            boxShadow: '0 0 3px rgba(0, 0, 0, 0.9)'
-          }} />
-          {/* Vertical line */}
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '2px',
-            height: `${Math.min(gridSize * scale * 0.15, 16)}px`,
-            backgroundColor: 'rgba(255, 50, 50, 0.9)',
-            boxShadow: '0 0 3px rgba(0, 0, 0, 0.9)'
-          }} />
-          {/* Center dot */}
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '4px',
-            height: '4px',
-            borderRadius: '50%',
-            backgroundColor: 'rgba(255, 50, 50, 1)',
-            border: '1px solid rgba(255, 255, 255, 0.8)',
-            boxShadow: '0 0 4px rgba(0, 0, 0, 1)'
-          }} />
-        </div>
-      )}
       
       {/* Directional arrows when center is out of view */}
       {showLeftArrow && (
@@ -125,8 +74,8 @@ export const PixelArtPreview: React.FC<PixelArtPreviewProps> = ({ grid, gridSize
           pointerEvents: 'none',
           zIndex: 10
         }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" style={{ filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.8))' }}>
-            <path d="M10 2 L4 8 L10 14" fill="none" stroke="rgba(255, 50, 50, 1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="16" height="16" viewBox="0 0 16 16" style={{ filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.8))' }}>
+            <path d="M10 2 L4 8 L10 14" fill="none" stroke="rgba(0, 0, 0, 1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
       )}
@@ -140,8 +89,8 @@ export const PixelArtPreview: React.FC<PixelArtPreviewProps> = ({ grid, gridSize
           pointerEvents: 'none',
           zIndex: 10
         }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" style={{ filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.8))' }}>
-            <path d="M6 2 L12 8 L6 14" fill="none" stroke="rgba(255, 50, 50, 1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="16" height="16" viewBox="0 0 16 16" style={{ filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.8))' }}>
+            <path d="M6 2 L12 8 L6 14" fill="none" stroke="rgba(0, 0, 0, 1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
       )}
@@ -155,8 +104,8 @@ export const PixelArtPreview: React.FC<PixelArtPreviewProps> = ({ grid, gridSize
           pointerEvents: 'none',
           zIndex: 10
         }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" style={{ filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.8))' }}>
-            <path d="M2 10 L8 4 L14 10" fill="none" stroke="rgba(255, 50, 50, 1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="16" height="16" viewBox="0 0 16 16" style={{ filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.8))' }}>
+            <path d="M2 10 L8 4 L14 10" fill="none" stroke="rgba(0, 0, 0, 1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
       )}
@@ -170,8 +119,8 @@ export const PixelArtPreview: React.FC<PixelArtPreviewProps> = ({ grid, gridSize
           pointerEvents: 'none',
           zIndex: 10
         }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" style={{ filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.8))' }}>
-            <path d="M2 6 L8 12 L14 6" fill="none" stroke="rgba(255, 50, 50, 1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="16" height="16" viewBox="0 0 16 16" style={{ filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.8))' }}>
+            <path d="M2 6 L8 12 L14 6" fill="none" stroke="rgba(0, 0, 0, 1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
       )}
