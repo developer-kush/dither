@@ -86,6 +86,7 @@ export default function MapEditor() {
   const [layersMenuOpen, setLayersMenuOpen] = useState(false);
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
+  const [dragOverBin, setDragOverBin] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const layersMenuRef = useRef<HTMLDivElement>(null);
   
@@ -348,6 +349,7 @@ export default function MapEditor() {
   const handleDragEnd = () => {
     setDraggedLayerId(null);
     setDragOverLayerId(null);
+    setDragOverBin(false);
   };
 
   const handleDrop = (e: React.DragEvent, targetLayerId: string) => {
@@ -374,6 +376,28 @@ export default function MapEditor() {
 
     setDraggedLayerId(null);
     setDragOverLayerId(null);
+  };
+
+  const handleBinDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverBin(true);
+  };
+
+  const handleBinDragLeave = () => {
+    setDragOverBin(false);
+  };
+
+  const handleBinDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    
+    if (draggedLayerId) {
+      deleteLayer(draggedLayerId);
+    }
+
+    setDraggedLayerId(null);
+    setDragOverLayerId(null);
+    setDragOverBin(false);
   };
 
   // Render a single cell in the grid - stacking all visible layers
@@ -693,8 +717,24 @@ export default function MapEditor() {
             }}
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="text-base font-bold uppercase tracking-wide opacity-80">
-                Layer List
+              <div className="flex items-center gap-2">
+                <div className="text-base font-bold uppercase tracking-wide opacity-80">
+                  Layers
+                </div>
+                <div
+                  className="p-2 border-2 border-black transition-colors"
+                  style={{
+                    backgroundColor: dragOverBin ? '#ff6b6b' : 'var(--theme-bg-panel)',
+                    boxShadow: '2px 2px 0 #000',
+                    cursor: draggedLayerId ? 'pointer' : 'default',
+                  }}
+                  onDragOver={handleBinDragOver}
+                  onDragLeave={handleBinDragLeave}
+                  onDrop={handleBinDrop}
+                  title="Drag layer here to delete"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                </div>
               </div>
             <GameButton
               icon
@@ -732,14 +772,18 @@ export default function MapEditor() {
                     onClick={() => setActiveLayerId(layer.id)}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <input
-                        type="text"
-                        value={layer.name}
-                        onChange={(e) => renameLayer(layer.id, e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-1 bg-transparent text-sm font-bold outline-none"
-                        style={{ minWidth: 0 }}
-                      />
+                      <div className="flex-1 min-w-0">
+                        <input
+                          type="text"
+                          value={layer.name}
+                          onChange={(e) => renameLayer(layer.id, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full bg-transparent text-sm font-bold outline-none"
+                        />
+                        <div className="text-[10px] opacity-70">
+                          {layer.mapData.size} tiles
+                        </div>
+                      </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <GameButton
                           icon
@@ -765,10 +809,6 @@ export default function MapEditor() {
                           <TrashIcon className="w-4 h-4" />
                         </GameButton>
                       </div>
-                    </div>
-                    
-                    <div className="text-[10px] opacity-70 mt-1">
-                      {layer.mapData.size} tiles • Drag to reorder
                     </div>
                   </div>
                 );
