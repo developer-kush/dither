@@ -50,11 +50,21 @@ export default function PixelArtGenerator() {
   const [brushMode, setBrushMode] = useState(false);
   const [boxStart, setBoxStart] = useState<{x: number, y: number} | null>(null);
   const [leftMenuOpen, setLeftMenuOpen] = useState(false);
-  const [currentTileId, setCurrentTileId] = useState<string>(() => `tile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
-  const [currentTileName, setCurrentTileName] = useState(() => {
+  
+  // Helper function to generate new tile ID and name
+  const generateNewTileIdAndName = () => {
     const id = `tile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    return `Untitled-${id.substring(id.lastIndexOf('_') + 1)}`;
-  });
+    const name = `Untitled-${id.substring(id.lastIndexOf('_') + 1)}`;
+    return { id, name };
+  };
+  
+  // Generate initial values (only computed once on first render)
+  const initialTileData = generateNewTileIdAndName();
+  
+  // Persistent tile identity - remember which tile is being edited across reloads
+  const [currentTileId, setCurrentTileId] = useLocalStorage<string>('pixelart-currentTileId', initialTileData.id);
+  const [currentTileName, setCurrentTileName] = useLocalStorage<string>('pixelart-currentTileName', initialTileData.name);
+  
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
   
@@ -146,6 +156,13 @@ export default function PixelArtGenerator() {
         return;
       }
       
+      // New tile with Ctrl/Cmd + N
+      if (key === 'n' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        handleReset();
+        return;
+      }
+      
       // Tool cycling with F: pencil -> brush -> flood fill -> box -> pencil
       if (key === 'f') {
         e.preventDefault();
@@ -209,7 +226,7 @@ export default function PixelArtGenerator() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [shiftWindow, handleUndo, handleRedo, hoveredPixel, boxMode, floodFillMode, brushMode]); // Re-register when dependencies change
+  }, [shiftWindow, handleUndo, handleRedo, hoveredPixel, boxMode, floodFillMode, brushMode, currentTileId, currentTileName, tiles, grid, gridSize, currentFolderId]); // Re-register when dependencies change
 
   // Handle grid size change
   function handleGridSizeChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -373,17 +390,24 @@ export default function PixelArtGenerator() {
     img.src = url!;
   }
 
-  // Reset grid: center window and clear colors
+  // Create new tile: keep the current board, but change the ID and name
   function handleReset() {
+    // Don't create a new board - keep the current one
+    // Just generate a new ID and name
+    const { id, name } = generateNewTileIdAndName();
+    setCurrentTileId(id);
+    setCurrentTileName(name);
+    showToast('New tile created - board preserved', 'info');
+  }
+
+  // Clear the board completely
+  function handleClearBoard() {
     const newBoard = new Board(gridSize);
     newBoard.centerWindow();
     setBoard(newBoard);
     setUndoStack([]);
     setRedoStack([]);
-    const newId = `tile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    setCurrentTileId(newId);
-    setCurrentTileName(`Untitled-${newId.substring(newId.lastIndexOf('_') + 1)}`);
-    showToast('New tile created', 'info');
+    showToast('Board cleared', 'info');
   }
 
   // Save current tile
@@ -766,8 +790,8 @@ export default function PixelArtGenerator() {
             <GameButton onClick={() => handleExport('svg')}>
               Export SVG
             </GameButton>
-            <GameButton onClick={handleReset}>
-              Reset
+            <GameButton onClick={handleClearBoard}>
+              Clear Board
             </GameButton>
           </>
         }
@@ -805,7 +829,7 @@ export default function PixelArtGenerator() {
               onClick={handleReset}
               className="flex-1 px-3 py-1 text-xs border-2 border-black bg-[var(--theme-bg-light)] hover:bg-[var(--theme-accent)] transition-colors"
               style={{ boxShadow: '2px 2px 0 #000' }}
-              title="New Tile"
+              title="New Tile (Ctrl+N)"
             >
               <div className="flex items-center justify-center gap-1">
                 <GameIcon type="reset" />
@@ -815,7 +839,7 @@ export default function PixelArtGenerator() {
           </div>
           
           <div className="text-[10px] opacity-60 font-mono truncate pt-1 border-t border-black/20" title={currentTileId}>
-            ID: {currentTileId.substring(currentTileId.lastIndexOf('_') + 1)}
+            ID: {typeof currentTileId === 'string' ? currentTileId.substring(currentTileId.lastIndexOf('_') + 1) : currentTileId}
           </div>
         </div>
 
