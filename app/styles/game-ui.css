@@ -55,7 +55,7 @@
 
 .game-menu {
   background-color: var(--theme-bg-medium);
-  @apply fixed top-0 bottom-0 transition-all duration-200 z-50;
+  @apply fixed top-16 bottom-0 transition-all duration-200 z-50;
 }
 
 .game-menu.left {

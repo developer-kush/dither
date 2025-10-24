@@ -10,7 +10,7 @@ import { GameSection } from "../components/GameSection";
 import { GameButton } from "../components/GameButton";
 import { GameIcon } from "../components/GameIcon";
 import { NavBar } from "../components/NavBar";
-import { TileList } from "../components/TileList";
+import { TileListVisual } from "../components/TileListVisual";
 import { Toast } from "../components/Toast";
 import { useTiles } from "../hooks/useTiles";
 import { floodFill } from "../utils/floodFill";
@@ -615,12 +615,11 @@ export default function PixelArtGenerator() {
       {/* Left Menu - Tiles */}
       <GameMenu side="left" triggerIcon={<GameIcon type="menu" />} onOpenChange={setLeftMenuOpen}>
         <div className="h-full flex flex-col">
-          <GameSection title="Tiles">
-            <TileList
+          <GameSection title="Saved Tiles">
+            <TileListVisual
               tiles={tiles}
               onLoadTile={handleLoadTile}
               onDeleteTile={deleteTile}
-              onRenameTile={renameTile}
               currentTileId={currentTileId}
             />
           </GameSection>
