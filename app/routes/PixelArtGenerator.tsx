@@ -842,17 +842,7 @@ export default function PixelArtGenerator() {
           </div>
         </div>
 
-        <div className="relative flex flex-row items-center gap-8">
-          {/* Preview */}
-          <div className="flex flex-col gap-2">
-            <div className="text-center text-sm px-3 py-1 border-2 border-black w-fit mx-auto" style={{ backgroundColor: 'var(--theme-bg-medium)', boxShadow: '2px 2px 0 #000' }}>
-              Preview
-            </div>
-            <div className="game-border p-2" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
-              <PixelArtPreview virtualGrid={board.getVirtualGrid()} gridSize={gridSize} windowPos={board.window} />
-            </div>
-          </div>
-
+        <div className="relative flex flex-row items-center justify-center">
           {/* Main Canvas */}
           <div className="relative">
 
@@ -930,6 +920,16 @@ export default function PixelArtGenerator() {
 
       <input type="file" accept="image/*" ref={fileInputRef} onChange={handleLoadTexture} className="hidden" />
       <canvas ref={canvasRef} className="hidden" />
+      
+      {/* Preview - Fixed Bottom Left */}
+      <div className="fixed bottom-8 left-8 z-10 flex flex-col gap-2">
+        <div className="text-center text-sm px-3 py-1 border-2 border-black w-fit mx-auto" style={{ backgroundColor: 'var(--theme-bg-medium)', boxShadow: '2px 2px 0 #000' }}>
+          Preview
+        </div>
+        <div className="game-border p-2" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
+          <PixelArtPreview grid={grid} gridSize={gridSize} />
+        </div>
+      </div>
       
       {/* Toast Notification */}
       {toastMessage && (
