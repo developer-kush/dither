@@ -5,6 +5,15 @@ import { useLocalStorage } from "../hooks/useLocalStorage";
 import { GameButton } from "../components/GameButton";
 import { GameIcon } from "../components/GameIcon";
 import { NavBar } from "../components/NavBar";
+import { 
+  EyeIcon, 
+  EyeSlashIcon, 
+  TrashIcon, 
+  ArrowUpIcon, 
+  ArrowDownIcon, 
+  PlusIcon,
+  ChevronUpIcon 
+} from "@heroicons/react/24/outline";
 
 export function meta() {
   return [
@@ -25,6 +34,13 @@ type TileTransform = {
   flipV: boolean;
 };
 
+interface Layer {
+  id: string;
+  name: string;
+  visible: boolean;
+  mapData: Map<string, { tileId: string; transform: TileTransform }>;
+}
+
 const CELL_SIZE = 64; // Size of each cell in pixels
 const GRID_SIZE = 100; // Number of cells in each direction
 
@@ -33,36 +49,55 @@ type Tool = 'pen' | 'eraser';
 export default function MapEditor() {
   const { tiles, getTile } = useTiles();
   
-  // Load map from localStorage - now stores both tileId and transform
-  const [mapData, setMapData] = useLocalStorage<Array<[string, string]>>('map-editor-data', []);
-  const [map, setMap] = useState<Map<string, { tileId: string; transform: TileTransform }>>(() => {
-    // Migrate old data format if needed
-    const newMap = new Map<string, { tileId: string; transform: TileTransform }>();
-    mapData.forEach(([key, value]) => {
-      try {
-        const parsed = JSON.parse(value);
-        if (parsed.tileId) {
-          newMap.set(key, parsed);
-        } else {
-          // Old format - just a tileId string
-          newMap.set(key, { tileId: value, transform: { rotation: 0, flipH: false, flipV: false } });
+  // Load layers from localStorage
+  const [layersData, setLayersData] = useLocalStorage<any[]>('map-editor-layers', []);
+  const [layers, setLayers] = useState<Layer[]>(() => {
+    if (layersData.length === 0) {
+      // Create default layer
+      return [{
+        id: `layer_${Date.now()}`,
+        name: 'Ground',
+        visible: true,
+        mapData: new Map()
+      }];
+    }
+    
+    // Load layers from storage
+    return layersData.map((layerData: any) => ({
+      id: layerData.id,
+      name: layerData.name,
+      visible: layerData.visible,
+      mapData: new Map(layerData.mapData.map(([key, value]: [string, string]) => {
+        try {
+          const parsed = JSON.parse(value);
+          return [key, parsed];
+        } catch {
+          return [key, { tileId: value, transform: { rotation: 0, flipH: false, flipV: false } }];
         }
-      } catch {
-        // Old format - just a tileId string
-        newMap.set(key, { tileId: value, transform: { rotation: 0, flipH: false, flipV: false } });
-      }
-    });
-    return newMap;
+      }))
+    }));
   });
   
+  const [activeLayerId, setActiveLayerId] = useState<string>(() => layers[0]?.id || '');
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [activeTransform, setActiveTransform] = useState<TileTransform>({ rotation: 0, flipH: false, flipV: false });
   const [mouseDown, setMouseDown] = useState(false);
   const [currentTool, setCurrentTool] = useState<Tool>('pen');
+  const [layersMenuOpen, setLayersMenuOpen] = useState(false);
+  const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
+  const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const layersMenuRef = useRef<HTMLDivElement>(null);
   
   // Cache for tile images to avoid regenerating them
   const tileImageCache = useRef<Map<string, string>>(new Map());
+
+  // Ensure there's always an active layer
+  useEffect(() => {
+    if (layers.length > 0 && (!activeLayerId || !layers.find(l => l.id === activeLayerId))) {
+      setActiveLayerId(layers[0].id);
+    }
+  }, [layers, activeLayerId]);
 
   // Set theme based on current tool
   useEffect(() => {
@@ -100,11 +135,16 @@ export default function MapEditor() {
     };
   }, []);
 
-  // Save map to localStorage whenever it changes
+  // Save layers to localStorage whenever they change
   useEffect(() => {
-    const entries = Array.from(map.entries()).map(([key, value]) => [key, JSON.stringify(value)]);
-    setMapData(entries as Array<[string, string]>);
-  }, [map]); // eslint-disable-line react-hooks/exhaustive-deps
+    const serializedLayers = layers.map(layer => ({
+      id: layer.id,
+      name: layer.name,
+      visible: layer.visible,
+      mapData: Array.from(layer.mapData.entries()).map(([key, value]) => [key, JSON.stringify(value)])
+    }));
+    setLayersData(serializedLayers);
+  }, [layers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Center the viewport on mount
   useEffect(() => {
@@ -137,23 +177,25 @@ export default function MapEditor() {
   const handleCellClick = (x: number, y: number) => {
     const key = `${x},${y}`;
     
-    if (currentTool === 'eraser') {
-      // Eraser mode - remove tile
-      setMap(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(key);
-        return newMap;
+    // Update only the active layer
+    setLayers(prevLayers => {
+      return prevLayers.map(layer => {
+        if (layer.id !== activeLayerId) return layer;
+        
+        const newMapData = new Map(layer.mapData);
+        
+        if (currentTool === 'eraser') {
+          // Eraser mode - remove tile from active layer
+          newMapData.delete(key);
+        } else {
+          // Pen mode - draw tile on active layer
+          if (!selectedTileId) return layer;
+          newMapData.set(key, { tileId: selectedTileId, transform: { ...activeTransform } });
+        }
+        
+        return { ...layer, mapData: newMapData };
       });
-    } else {
-      // Pen mode - draw tile
-      if (!selectedTileId) return;
-      
-      setMap(prev => {
-        const newMap = new Map(prev);
-        newMap.set(key, { tileId: selectedTileId, transform: { ...activeTransform } });
-        return newMap;
-      });
-    }
+    });
   };
 
 
@@ -228,11 +270,118 @@ export default function MapEditor() {
     setMouseDown(false);
   };
 
-  // Render a single cell in the grid
+  // Layer management functions
+  const addLayer = () => {
+    const newLayer: Layer = {
+      id: `layer_${Date.now()}`,
+      name: `Layer ${layers.length + 1}`,
+      visible: true,
+      mapData: new Map()
+    };
+    setLayers(prev => [...prev, newLayer]);
+    setActiveLayerId(newLayer.id);
+  };
+
+  const deleteLayer = (layerId: string) => {
+    if (layers.length === 1) return; // Don't delete the last layer
+    
+    const layerToDelete = layers.find(l => l.id === layerId);
+    if (layerToDelete && layerToDelete.mapData.size > 0) {
+      // Confirm deletion if layer has tiles
+      if (!window.confirm(`Delete layer "${layerToDelete.name}" with ${layerToDelete.mapData.size} tiles?`)) {
+        return;
+      }
+    }
+    
+    // Always ensure a layer is active after deletion
+    if (activeLayerId === layerId) {
+      const remainingLayers = layers.filter(l => l.id !== layerId);
+      setActiveLayerId(remainingLayers[0]?.id || '');
+    }
+    
+    setLayers(prev => prev.filter(l => l.id !== layerId));
+  };
+
+  const toggleLayerVisibility = (layerId: string) => {
+    setLayers(prev => prev.map(l => 
+      l.id === layerId ? { ...l, visible: !l.visible } : l
+    ));
+  };
+
+  const renameLayer = (layerId: string, newName: string) => {
+    setLayers(prev => prev.map(l => 
+      l.id === layerId ? { ...l, name: newName } : l
+    ));
+  };
+
+  const moveLayerUp = (layerId: string) => {
+    setLayers(prev => {
+      const index = prev.findIndex(l => l.id === layerId);
+      if (index >= prev.length - 1) return prev;
+      const newLayers = [...prev];
+      [newLayers[index], newLayers[index + 1]] = [newLayers[index + 1], newLayers[index]];
+      return newLayers;
+    });
+  };
+
+  const moveLayerDown = (layerId: string) => {
+    setLayers(prev => {
+      const index = prev.findIndex(l => l.id === layerId);
+      if (index <= 0) return prev;
+      const newLayers = [...prev];
+      [newLayers[index], newLayers[index - 1]] = [newLayers[index - 1], newLayers[index]];
+      return newLayers;
+    });
+  };
+
+  const handleDragStart = (e: React.DragEvent, layerId: string) => {
+    setDraggedLayerId(layerId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, layerId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverLayerId(layerId);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedLayerId(null);
+    setDragOverLayerId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetLayerId: string) => {
+    e.preventDefault();
+    
+    if (!draggedLayerId || draggedLayerId === targetLayerId) {
+      setDraggedLayerId(null);
+      setDragOverLayerId(null);
+      return;
+    }
+
+    setLayers(prev => {
+      const draggedIndex = prev.findIndex(l => l.id === draggedLayerId);
+      const targetIndex = prev.findIndex(l => l.id === targetLayerId);
+      
+      if (draggedIndex === -1 || targetIndex === -1) return prev;
+      
+      const newLayers = [...prev];
+      const [removed] = newLayers.splice(draggedIndex, 1);
+      newLayers.splice(targetIndex, 0, removed);
+      
+      return newLayers;
+    });
+
+    setDraggedLayerId(null);
+    setDragOverLayerId(null);
+  };
+
+  // Render a single cell in the grid - stacking all visible layers
   const renderCell = (x: number, y: number) => {
     const key = `${x},${y}`;
-    const cellData = map.get(key);
-    const tileImage = cellData ? getTileImage(cellData.tileId, cellData.transform) : null;
+    
+    // Check if any visible layer has a tile at this position
+    const hasAnyTile = layers.some(layer => layer.visible && layer.mapData.has(key));
 
     return (
       <div
@@ -243,21 +392,38 @@ export default function MapEditor() {
           height: CELL_SIZE,
           gridColumn: x + 1,
           gridRow: y + 1,
-          border: cellData ? 'none' : '1px solid rgba(0,0,0,0.1)',
+          border: hasAnyTile ? 'none' : '1px solid rgba(0,0,0,0.1)',
           userSelect: 'none',
         }}
         onMouseDown={() => handleMouseDown(x, y)}
         onMouseEnter={() => handleMouseEnter(x, y)}
         onMouseUp={handleMouseUp}
       >
-        {tileImage && (
-          <img
-            src={tileImage}
-            alt="tile"
-            className="w-full h-full"
-            style={{ imageRendering: 'pixelated', pointerEvents: 'none' }}
-          />
-        )}
+        {/* Render all visible layers from bottom to top */}
+        {layers.map((layer, index) => {
+          if (!layer.visible) return null;
+          
+          const cellData = layer.mapData.get(key);
+          if (!cellData) return null;
+          
+          const tileImage = getTileImage(cellData.tileId, cellData.transform);
+          if (!tileImage) return null;
+          
+          return (
+            <img
+              key={layer.id}
+              src={tileImage}
+              alt="tile"
+              className="w-full h-full absolute top-0 left-0"
+              style={{ 
+                imageRendering: 'pixelated', 
+                pointerEvents: 'none',
+                zIndex: index,
+                opacity: layer.id === activeLayerId ? 1 : 0.85
+              }}
+            />
+          );
+        })}
       </div>
     );
   };
@@ -486,6 +652,130 @@ export default function MapEditor() {
             </div>
           </div>
         )}
+
+        {/* Layers Menu - Bottom Right */}
+        <div 
+          ref={layersMenuRef}
+          className="fixed right-8 bottom-0 transition-all duration-300 ease-out flex flex-col"
+          style={{
+            width: '280px',
+            zIndex: 10,
+            transform: layersMenuOpen ? 'translateY(0)' : `translateY(calc(100% - 50px))`,
+            height: selectedTileId ? 'calc(100vh - 340px)' : 'calc(100vh - 100px)',
+          }}
+          onMouseEnter={() => setLayersMenuOpen(true)}
+          onMouseLeave={() => setLayersMenuOpen(false)}
+        >
+          {/* Nudge/Tab - at the top */}
+          <div 
+            className="w-full p-2 border-2 border-black text-center cursor-pointer flex-shrink-0"
+            style={{ 
+              backgroundColor: 'var(--theme-bg-medium)',
+              boxShadow: '4px 0px 0 #000, -4px 0px 0 #000, 0px -4px 0 #000',
+              borderBottom: 'none',
+              borderTopLeftRadius: '8px',
+              borderTopRightRadius: '8px',
+            }}
+          >
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-sm font-bold uppercase tracking-wide">Layers</span>
+              <ChevronUpIcon className="w-5 h-5" />
+            </div>
+          </div>
+          
+          {/* Layers Panel */}
+          <div 
+            className="p-4 border-2 border-black overflow-y-auto flex-1"
+            style={{ 
+              backgroundColor: 'var(--theme-bg-medium)',
+              boxShadow: '4px 4px 0 #000',
+              borderTop: 'none',
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-base font-bold uppercase tracking-wide opacity-80">
+                Layer List
+              </div>
+            <GameButton
+              icon
+              onClick={addLayer}
+              title="Add Layer"
+            >
+              <PlusIcon className="w-5 h-5" />
+            </GameButton>
+            </div>
+            
+            {/* Layers List - Render from top to bottom (reversed) */}
+            <div className="flex flex-col gap-2">
+              {[...layers].reverse().map((layer, reversedIndex) => {
+                const actualIndex = layers.length - 1 - reversedIndex;
+                const isDragging = draggedLayerId === layer.id;
+                const isDragOver = dragOverLayerId === layer.id;
+                
+                return (
+                  <div
+                    key={layer.id}
+                    className="border-2 border-black p-2"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, layer.id)}
+                    onDragOver={(e) => handleDragOver(e, layer.id)}
+                    onDragEnd={handleDragEnd}
+                    onDrop={(e) => handleDrop(e, layer.id)}
+                    style={{
+                      backgroundColor: layer.id === activeLayerId ? 'var(--theme-accent)' : 'var(--theme-bg-panel)',
+                      cursor: isDragging ? 'grabbing' : 'grab',
+                      opacity: isDragging ? 0.5 : 1,
+                      borderColor: isDragOver && !isDragging ? 'var(--theme-accent)' : '#000',
+                      borderWidth: isDragOver && !isDragging ? '3px' : '2px',
+                      transition: 'opacity 0.2s, border-color 0.2s',
+                    }}
+                    onClick={() => setActiveLayerId(layer.id)}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <input
+                        type="text"
+                        value={layer.name}
+                        onChange={(e) => renameLayer(layer.id, e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 bg-transparent text-sm font-bold outline-none"
+                        style={{ minWidth: 0 }}
+                      />
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <GameButton
+                          icon
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleLayerVisibility(layer.id);
+                          }}
+                          title={layer.visible ? 'Hide Layer' : 'Show Layer'}
+                          style={{ padding: '5px' }}
+                        >
+                          {layer.visible ? <EyeIcon className="w-4 h-4" /> : <EyeSlashIcon className="w-4 h-4" />}
+                        </GameButton>
+                        <GameButton
+                          icon
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteLayer(layer.id);
+                          }}
+                          disabled={layers.length === 1}
+                          title="Delete Layer"
+                          style={{ padding: '5px' }}
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </GameButton>
+                      </div>
+                    </div>
+                    
+                    <div className="text-[10px] opacity-70 mt-1">
+                      {layer.mapData.size} tiles • Drag to reorder
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
         <div
           className="inline-grid"
