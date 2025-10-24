@@ -97,6 +97,12 @@ export default function PixelArtGenerator() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [floodFillMode, boxMode, brushMode, leftMenuOpen]);
 
+  // Helper to show toast
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToastMessage(message);
+    setToastType(type);
+  };
+
   // Shift logic: move the window, not the pixels
   const shiftWindow = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
     const newBoard = new Board(board.size);
@@ -108,6 +114,98 @@ export default function PixelArtGenerator() {
     if (direction === 'right') newBoard.shift(1, 0);
     setBoard(newBoard);
   }, [board]);
+
+  // Rotate 90 degrees clockwise
+  const rotateClockwise = useCallback(() => {
+    setUndoStack(stack => [...stack, board]);
+    setRedoStack([]);
+    
+    const currentGrid = board.getWindow();
+    const size = currentGrid.length;
+    const rotated: string[][] = Array.from({ length: size }, () => Array(size).fill("rgba(0,0,0,0)"));
+    
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        rotated[x][size - 1 - y] = currentGrid[y][x];
+      }
+    }
+    
+    const newBoard = new Board(board.size);
+    newBoard.data = board.getVirtualGrid();
+    newBoard.window = { ...board.window };
+    newBoard.setWindow(rotated);
+    setBoard(newBoard);
+    showToast('Rotated clockwise', 'success');
+  }, [board, showToast]);
+
+  // Rotate 90 degrees counter-clockwise
+  const rotateCounterClockwise = useCallback(() => {
+    setUndoStack(stack => [...stack, board]);
+    setRedoStack([]);
+    
+    const currentGrid = board.getWindow();
+    const size = currentGrid.length;
+    const rotated: string[][] = Array.from({ length: size }, () => Array(size).fill("rgba(0,0,0,0)"));
+    
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        rotated[size - 1 - x][y] = currentGrid[y][x];
+      }
+    }
+    
+    const newBoard = new Board(board.size);
+    newBoard.data = board.getVirtualGrid();
+    newBoard.window = { ...board.window };
+    newBoard.setWindow(rotated);
+    setBoard(newBoard);
+    showToast('Rotated counter-clockwise', 'success');
+  }, [board, showToast]);
+
+  // Flip horizontally
+  const flipHorizontal = useCallback(() => {
+    setUndoStack(stack => [...stack, board]);
+    setRedoStack([]);
+    
+    const currentGrid = board.getWindow();
+    const size = currentGrid.length;
+    const flipped: string[][] = Array.from({ length: size }, () => Array(size).fill("rgba(0,0,0,0)"));
+    
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        flipped[y][size - 1 - x] = currentGrid[y][x];
+      }
+    }
+    
+    const newBoard = new Board(board.size);
+    newBoard.data = board.getVirtualGrid();
+    newBoard.window = { ...board.window };
+    newBoard.setWindow(flipped);
+    setBoard(newBoard);
+    showToast('Flipped horizontally', 'success');
+  }, [board, showToast]);
+
+  // Flip vertically
+  const flipVertical = useCallback(() => {
+    setUndoStack(stack => [...stack, board]);
+    setRedoStack([]);
+    
+    const currentGrid = board.getWindow();
+    const size = currentGrid.length;
+    const flipped: string[][] = Array.from({ length: size }, () => Array(size).fill("rgba(0,0,0,0)"));
+    
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        flipped[size - 1 - y][x] = currentGrid[y][x];
+      }
+    }
+    
+    const newBoard = new Board(board.size);
+    newBoard.data = board.getVirtualGrid();
+    newBoard.window = { ...board.window };
+    newBoard.setWindow(flipped);
+    setBoard(newBoard);
+    showToast('Flipped vertically', 'success');
+  }, [board, showToast]);
 
   // Undo function
   const handleUndo = useCallback(() => {
@@ -126,12 +224,6 @@ export default function PixelArtGenerator() {
     setBoard(nextBoard);
     setRedoStack(prev => prev.slice(0, -1));
   }, [redoStack, board]);
-
-  // Helper to show toast
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    setToastMessage(message);
-    setToastType(type);
-  };
 
   // Set up keyboard controls
   useEffect(() => {
@@ -826,7 +918,49 @@ export default function PixelArtGenerator() {
             </select>
           </div>
           
-          <div className="flex gap-2">
+          <div className="pt-2 border-t border-black/20">
+            <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-2">Modifiers</div>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={rotateCounterClockwise}
+                  className="flex-1 px-2 py-1 text-xs border-2 border-black bg-[var(--theme-bg-light)] hover:bg-[var(--theme-accent)] transition-colors"
+                  style={{ boxShadow: '2px 2px 0 #000' }}
+                  title="Rotate Counter-Clockwise"
+                >
+                  ↺
+                </button>
+                <button
+                  onClick={rotateClockwise}
+                  className="flex-1 px-2 py-1 text-xs border-2 border-black bg-[var(--theme-bg-light)] hover:bg-[var(--theme-accent)] transition-colors"
+                  style={{ boxShadow: '2px 2px 0 #000' }}
+                  title="Rotate Clockwise"
+                >
+                  ↻
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={flipHorizontal}
+                  className="flex-1 px-2 py-1 text-xs border-2 border-black bg-[var(--theme-bg-light)] hover:bg-[var(--theme-accent)] transition-colors"
+                  style={{ boxShadow: '2px 2px 0 #000' }}
+                  title="Flip Horizontal"
+                >
+                  ⇄
+                </button>
+                <button
+                  onClick={flipVertical}
+                  className="flex-1 px-2 py-1 text-xs border-2 border-black bg-[var(--theme-bg-light)] hover:bg-[var(--theme-accent)] transition-colors"
+                  style={{ boxShadow: '2px 2px 0 #000' }}
+                  title="Flip Vertical"
+                >
+                  ⇅
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex gap-2 pt-2 border-t border-black/20">
             <button
               onClick={handleSaveTile}
               className="flex-1 px-3 py-1 text-xs border-2 border-black bg-[var(--theme-bg-light)] hover:bg-[var(--theme-accent)] transition-colors"
