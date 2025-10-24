@@ -812,6 +812,20 @@ export default function PixelArtGenerator() {
             />
           </div>
           
+          <div>
+            <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-1">Grid Size</div>
+            <select 
+              value={gridSize} 
+              onChange={handleGridSizeChange} 
+              className="w-full px-2 py-1 text-sm border-2 border-black bg-[var(--theme-bg-panel)] outline-none cursor-pointer"
+              style={{ boxShadow: 'inset 2px 2px 0 rgba(0,0,0,0.1)' }}
+            >
+              {GRID_SIZES.map(size => (
+                <option key={size} value={size}>{size}x{size}</option>
+              ))}
+            </select>
+          </div>
+          
           <div className="flex gap-2">
             <button
               onClick={handleSaveTile}
@@ -898,20 +912,6 @@ export default function PixelArtGenerator() {
                   />
                 ))
               )}
-            </div>
-            {/* Grid Size Selector */}
-            <div className="absolute right-[5%] top-[calc(100%-1px)] -translate-y-1/2 z-10">
-              <div className="game-button whitespace-nowrap">
-                <select 
-                  value={gridSize} 
-                  onChange={handleGridSizeChange} 
-                  className="bg-transparent border-none outline-none cursor-pointer"
-                >
-                  {GRID_SIZES.map(size => (
-                    <option key={size} value={size}>{size}x{size}</option>
-                  ))}
-                </select>
-              </div>
             </div>
           </div>
         </div>
