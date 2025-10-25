@@ -85,6 +85,13 @@ export const NavBar: React.FC<NavBarProps> = ({
                 <div className="font-bold">Tile Editor</div>
                 <div className="text-xs opacity-60">Create pixel art tiles</div>
               </Link>
+              <Link 
+                to="/tile-studio"
+                className="block px-4 py-3 border-b-2 border-black hover:bg-[var(--theme-accent)] transition-colors"
+              >
+                <div className="font-bold">Tile Studio</div>
+                <div className="text-xs opacity-60">Create animated tiles</div>
+              </Link>
             <Link 
               to="/map-editor"
               className="block px-4 py-3 border-b-2 border-black hover:bg-[var(--theme-accent)] transition-colors"

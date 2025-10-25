@@ -662,7 +662,7 @@ export default function MapEditor() {
                       style={{ imageRendering: 'pixelated' }}
                     />
                     <div className="text-xs mt-1 truncate text-center font-bold" style={{ color: isComplex ? '#8B6914' : 'inherit' }}>
-                      {isComplex && '⭐ '}{tile.name}
+                      {tile.name}
                     </div>
                   </div>
                 );
