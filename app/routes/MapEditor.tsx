@@ -79,8 +79,8 @@ export default function MapEditor() {
   });
   
   const [activeLayerId, setActiveLayerId] = useState<string>(() => layers[0]?.id || '');
-  const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
-  const [activeTransform, setActiveTransform] = useState<TileTransform>({ rotation: 0, flipH: false, flipV: false });
+  const [selectedTileId, setSelectedTileId] = useLocalStorage<string | null>('map-editor-selected-tile', null);
+  const [activeTransform, setActiveTransform] = useLocalStorage<TileTransform>('map-editor-active-transform', { rotation: 0, flipH: false, flipV: false });
   const [mouseDown, setMouseDown] = useState(false);
   const [currentTool, setCurrentTool] = useState<Tool>('pen');
   const [layersMenuOpen, setLayersMenuOpen] = useState(false);
@@ -99,6 +99,16 @@ export default function MapEditor() {
       setActiveLayerId(layers[0].id);
     }
   }, [layers, activeLayerId]);
+
+  // Ensure there's always an active tile when tiles are available
+  useEffect(() => {
+    if (tiles.length > 0) {
+      // If no tile is selected or selected tile doesn't exist anymore, select the first one
+      if (!selectedTileId || !tiles.find(t => t.id === selectedTileId)) {
+        setSelectedTileId(tiles[0].id);
+      }
+    }
+  }, [tiles]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Set theme based on current tool
   useEffect(() => {
@@ -556,6 +566,10 @@ export default function MapEditor() {
                   onClick={() => {
                     setSelectedTileId(tile.id);
                     setActiveTransform({ rotation: 0, flipH: false, flipV: false });
+                    // Switch back to pen tool when selecting a tile
+                    if (currentTool === 'eraser') {
+                      setCurrentTool('pen');
+                    }
                   }}
                 >
                   {tileImage && (
@@ -717,32 +731,34 @@ export default function MapEditor() {
             }}
           >
             <div className="flex items-center justify-between mb-3">
+              <div className="text-base font-bold uppercase tracking-wide opacity-80">
+                Layers
+              </div>
               <div className="flex items-center gap-2">
-                <div className="text-base font-bold uppercase tracking-wide opacity-80">
-                  Layers
-                </div>
                 <div
-                  className="p-2 border-2 border-black transition-colors"
-                  style={{
-                    backgroundColor: dragOverBin ? '#ff6b6b' : 'var(--theme-bg-panel)',
-                    boxShadow: '2px 2px 0 #000',
-                    cursor: draggedLayerId ? 'pointer' : 'default',
-                  }}
                   onDragOver={handleBinDragOver}
                   onDragLeave={handleBinDragLeave}
                   onDrop={handleBinDrop}
                   title="Drag layer here to delete"
                 >
-                  <TrashIcon className="w-4 h-4" />
+                  <GameButton
+                    icon
+                    style={{
+                      backgroundColor: dragOverBin ? '#ff6b6b' : undefined,
+                      transition: 'background-color 0.2s',
+                    }}
+                  >
+                    <TrashIcon className="w-5 h-5" />
+                  </GameButton>
                 </div>
+                <GameButton
+                  icon
+                  onClick={addLayer}
+                  title="Add Layer"
+                >
+                  <PlusIcon className="w-5 h-5" />
+                </GameButton>
               </div>
-            <GameButton
-              icon
-              onClick={addLayer}
-              title="Add Layer"
-            >
-              <PlusIcon className="w-5 h-5" />
-            </GameButton>
             </div>
             
             {/* Layers List - Render from top to bottom (reversed) */}
@@ -784,31 +800,17 @@ export default function MapEditor() {
                           {layer.mapData.size} tiles
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <GameButton
-                          icon
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleLayerVisibility(layer.id);
-                          }}
-                          title={layer.visible ? 'Hide Layer' : 'Show Layer'}
-                          style={{ padding: '5px' }}
-                        >
-                          {layer.visible ? <EyeIcon className="w-4 h-4" /> : <EyeSlashIcon className="w-4 h-4" />}
-                        </GameButton>
-                        <GameButton
-                          icon
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteLayer(layer.id);
-                          }}
-                          disabled={layers.length === 1}
-                          title="Delete Layer"
-                          style={{ padding: '5px' }}
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </GameButton>
-                      </div>
+                      <GameButton
+                        icon
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleLayerVisibility(layer.id);
+                        }}
+                        title={layer.visible ? 'Hide Layer' : 'Show Layer'}
+                        style={{ padding: '5px' }}
+                      >
+                        {layer.visible ? <EyeIcon className="w-4 h-4" /> : <EyeSlashIcon className="w-4 h-4" />}
+                      </GameButton>
                     </div>
                   </div>
                 );
