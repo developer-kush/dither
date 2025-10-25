@@ -22,7 +22,7 @@ export function meta() {
   ];
 }
 
-// Component for rendering animated complex tiles
+// Component for rendering animated complex tiles with synchronized animation
 const AnimatedTileImage = ({ 
   tile, 
   transform, 
@@ -38,7 +38,7 @@ const AnimatedTileImage = ({
   className?: string; 
   style?: React.CSSProperties;
 }) => {
-  const [frameIndex, setFrameIndex] = useState(0);
+  const [, setTick] = useState(0);
   
   useEffect(() => {
     if (!tile.isComplex || !tile.animationFrames || tile.animationFrames.length <= 1) {
@@ -46,14 +46,33 @@ const AnimatedTileImage = ({
     }
 
     const fps = tile.animationFps || 8;
+    // Update every frame to keep animation smooth
     const interval = setInterval(() => {
-      setFrameIndex(prev => (prev + 1) % tile.animationFrames.length);
+      setTick(t => t + 1);
     }, 1000 / fps);
 
     return () => clearInterval(interval);
   }, [tile]);
 
-  // For complex tiles, use the current animation frame
+  // Calculate frame index based on global time - this synchronizes all animations
+  const getFrameIndex = () => {
+    if (!tile.isComplex || !tile.animationFrames || tile.animationFrames.length <= 1) {
+      return 0;
+    }
+    
+    const fps = tile.animationFps || 8;
+    const frameCount = tile.animationFrames.length;
+    
+    // Use global time to synchronize all animations
+    const now = Date.now();
+    const msPerFrame = 1000 / fps;
+    const totalFramesPassed = Math.floor(now / msPerFrame);
+    
+    return totalFramesPassed % frameCount;
+  };
+
+  // For complex tiles, use the current animation frame based on global time
+  const frameIndex = getFrameIndex();
   const displayTileId = tile.isComplex && tile.animationFrames && tile.animationFrames.length > 0
     ? tile.animationFrames[frameIndex]
     : tile.id;
