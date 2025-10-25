@@ -50,6 +50,7 @@ export default function PixelArtGenerator() {
   const [brushMode, setBrushMode] = useState(false);
   const [boxStart, setBoxStart] = useState<{x: number, y: number} | null>(null);
   const [leftMenuOpen, setLeftMenuOpen] = useState(false);
+  const [hexInput, setHexInput] = useState(color.toUpperCase());
   
   // Helper function to generate new tile ID and name
   const generateNewTileIdAndName = () => {
@@ -96,6 +97,11 @@ export default function PixelArtGenerator() {
     }
     document.documentElement.setAttribute('data-theme', theme);
   }, [floodFillMode, boxMode, brushMode, leftMenuOpen]);
+
+  // Sync hex input with color changes
+  useEffect(() => {
+    setHexInput(color.toUpperCase());
+  }, [color]);
 
   // Helper to show toast
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -767,6 +773,33 @@ export default function PixelArtGenerator() {
               onChange={handleColorChange} 
               className="game-input w-full h-12"
             />
+            <div className="flex gap-2 items-center">
+              <label className="text-sm font-bold">Hex:</label>
+              <input
+                type="text"
+                value={hexInput}
+                onChange={(e) => {
+                  const hex = e.target.value.trim().toUpperCase();
+                  // Allow typing # and partial hex codes
+                  if (hex === '' || hex === '#' || /^#[0-9A-Fa-f]{0,6}$/.test(hex)) {
+                    setHexInput(hex);
+                    // Only update color if it's a valid 6-digit hex
+                    if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+                      setColor(hex.toLowerCase());
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  // On blur, ensure the hex input shows the current valid color
+                  if (!/^#[0-9A-Fa-f]{6}$/.test(hexInput)) {
+                    setHexInput(color.toUpperCase());
+                  }
+                }}
+                placeholder="#000000"
+                className="game-input flex-1 px-2 py-1 text-sm font-mono"
+                style={{ minWidth: '80px' }}
+              />
+            </div>
             <GameButton
               icon
               style={color === BIN_COLOR ? { backgroundColor: 'var(--theme-accent)' } : {}}

@@ -22,6 +22,56 @@ export function meta() {
   ];
 }
 
+// Component for rendering animated complex tiles
+const AnimatedTileImage = ({ 
+  tile, 
+  transform, 
+  getTileImage,
+  getTile,
+  className, 
+  style 
+}: { 
+  tile: any; 
+  transform: any; 
+  getTileImage: (id: string, t?: any) => string | null;
+  getTile: (id: string) => any;
+  className?: string; 
+  style?: React.CSSProperties;
+}) => {
+  const [frameIndex, setFrameIndex] = useState(0);
+  
+  useEffect(() => {
+    if (!tile.isComplex || !tile.animationFrames || tile.animationFrames.length <= 1) {
+      return;
+    }
+
+    const fps = tile.animationFps || 8;
+    const interval = setInterval(() => {
+      setFrameIndex(prev => (prev + 1) % tile.animationFrames.length);
+    }, 1000 / fps);
+
+    return () => clearInterval(interval);
+  }, [tile]);
+
+  // For complex tiles, use the current animation frame
+  const displayTileId = tile.isComplex && tile.animationFrames && tile.animationFrames.length > 0
+    ? tile.animationFrames[frameIndex]
+    : tile.id;
+
+  const tileImage = getTileImage(displayTileId, transform);
+  
+  if (!tileImage) return null;
+
+  return (
+    <img
+      src={tileImage}
+      alt={tile.name}
+      className={className}
+      style={style}
+    />
+  );
+};
+
 interface MapCell {
   tileId: string | null;
   x: number;
@@ -440,14 +490,16 @@ export default function MapEditor() {
           const cellData = layer.mapData.get(key);
           if (!cellData) return null;
           
-          const tileImage = getTileImage(cellData.tileId, cellData.transform);
-          if (!tileImage) return null;
+          const tile = getTile(cellData.tileId);
+          if (!tile) return null;
           
           return (
-            <img
+            <AnimatedTileImage
               key={layer.id}
-              src={tileImage}
-              alt="tile"
+              tile={tile}
+              transform={cellData.transform}
+              getTileImage={getTileImage}
+              getTile={getTile}
               className="w-full h-full absolute top-0 left-0"
               style={{ 
                 imageRendering: 'pixelated', 
@@ -551,39 +603,51 @@ export default function MapEditor() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            {tiles.map(tile => {
-              const tileImage = getTileImage(tile.id);
-              return (
-                <div
-                  key={tile.id}
-                  className={`border-2 border-black cursor-pointer p-1 transition-all ${
-                    selectedTileId === tile.id ? 'ring-4 ring-blue-500' : ''
-                  }`}
-                  style={{ 
-                    backgroundColor: 'var(--theme-bg-medium)',
-                    boxShadow: '2px 2px 0 #000'
-                  }}
-                  onClick={() => {
-                    setSelectedTileId(tile.id);
-                    setActiveTransform({ rotation: 0, flipH: false, flipV: false });
-                    // Switch back to pen tool when selecting a tile
-                    if (currentTool === 'eraser') {
-                      setCurrentTool('pen');
-                    }
-                  }}
-                >
-                  {tileImage && (
-                    <img
-                      src={tileImage}
-                      alt={tile.name}
+            {[...tiles]
+              .sort((a, b) => {
+                // Complex tiles first
+                if (a.isComplex && !b.isComplex) return -1;
+                if (!a.isComplex && b.isComplex) return 1;
+                return 0;
+              })
+              .map(tile => {
+                const isComplex = tile.isComplex || false;
+                
+                return (
+                  <div
+                    key={tile.id}
+                    className={`border-2 cursor-pointer p-1 transition-all ${
+                      selectedTileId === tile.id ? 'ring-4 ring-blue-500' : ''
+                    }`}
+                    style={{ 
+                      backgroundColor: isComplex ? '#FFF8DC' : 'var(--theme-bg-medium)',
+                      borderColor: isComplex ? '#FFD700' : '#000',
+                      borderWidth: isComplex ? '3px' : '2px',
+                      boxShadow: isComplex ? '3px 3px 0 #DAA520' : '2px 2px 0 #000'
+                    }}
+                    onClick={() => {
+                      setSelectedTileId(tile.id);
+                      setActiveTransform({ rotation: 0, flipH: false, flipV: false });
+                      // Switch back to pen tool when selecting a tile
+                      if (currentTool === 'eraser') {
+                        setCurrentTool('pen');
+                      }
+                    }}
+                  >
+                    <AnimatedTileImage
+                      tile={tile}
+                      transform={{ rotation: 0, flipH: false, flipV: false }}
+                      getTileImage={getTileImage}
+                      getTile={getTile}
                       className="w-full h-auto"
                       style={{ imageRendering: 'pixelated' }}
                     />
-                  )}
-                  <div className="text-xs mt-1 truncate text-center">{tile.name}</div>
-                </div>
-              );
-            })}
+                    <div className="text-xs mt-1 truncate text-center font-bold" style={{ color: isComplex ? '#8B6914' : 'inherit' }}>
+                      {isComplex && '⭐ '}{tile.name}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         )}
       </div>

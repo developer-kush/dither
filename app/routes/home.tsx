@@ -31,7 +31,7 @@ export default function Home() {
           <p className="text-xl text-gray-300">Pixel Art Editor & Tileset Generator</p>
           <p className="text-base text-gray-400">Create beautiful pixel art with powerful tools</p>
           
-          <div className="flex gap-4 justify-center">
+          <div className="flex flex-wrap gap-4 justify-center">
             <Link 
               to="/tile-editor"
               className="inline-block px-8 py-4 text-lg border-4 border-white font-bold transition-all hover:translate-x-1 hover:translate-y-1 bg-white text-black"
@@ -40,6 +40,16 @@ export default function Home() {
               }}
             >
               TILE EDITOR
+            </Link>
+            
+            <Link 
+              to="/tile-studio"
+              className="inline-block px-8 py-4 text-lg border-4 border-white font-bold transition-all hover:translate-x-1 hover:translate-y-1 bg-white text-black"
+              style={{ 
+                boxShadow: '6px 6px 0 #fff'
+              }}
+            >
+              TILE STUDIO
             </Link>
             
             <Link 

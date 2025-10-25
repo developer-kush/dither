@@ -8,6 +8,9 @@ export interface Tile {
   folderId: string | null;
   createdAt: number;
   updatedAt: number;
+  isComplex?: boolean; // True for animated/complex tiles
+  animationFrames?: string[]; // Array of tile IDs for animation
+  animationFps?: number; // Animation speed
 }
 
 export interface Folder {
@@ -71,7 +74,16 @@ export function useTiles() {
     }
   }, [folders, isLoaded]);
 
-  const saveTile = (name: string, grid: string[][], size: number, folderId: string | null = null, existingId?: string): string => {
+  const saveTile = (
+    name: string, 
+    grid: string[][], 
+    size: number, 
+    folderId: string | null = null, 
+    existingId?: string,
+    isComplex?: boolean,
+    animationFrames?: string[],
+    animationFps?: number
+  ): string => {
     const now = Date.now();
     
     if (existingId) {
@@ -82,7 +94,17 @@ export function useTiles() {
         // Update existing tile
         setTiles(prev => prev.map(tile => 
           tile.id === existingId 
-            ? { ...tile, name, grid, size, folderId, updatedAt: now }
+            ? { 
+                ...tile, 
+                name, 
+                grid, 
+                size, 
+                folderId, 
+                updatedAt: now,
+                isComplex,
+                animationFrames,
+                animationFps
+              }
             : tile
         ));
         return existingId;
@@ -96,6 +118,9 @@ export function useTiles() {
           folderId,
           createdAt: now,
           updatedAt: now,
+          isComplex,
+          animationFrames,
+          animationFps,
         };
         setTiles(prev => [...prev, newTile]);
         return existingId;
@@ -110,6 +135,9 @@ export function useTiles() {
         folderId,
         createdAt: now,
         updatedAt: now,
+        isComplex,
+        animationFrames,
+        animationFps,
       };
       setTiles(prev => [...prev, newTile]);
       return newTile.id;
