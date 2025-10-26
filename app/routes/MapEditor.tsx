@@ -118,7 +118,7 @@ const GRID_SIZE = 100; // Number of cells in each direction
 type Tool = 'pen' | 'eraser';
 
 export default function MapEditor() {
-  const { tiles: allTiles, getTile, getAllLabels } = useTiles();
+  const { tiles: allTiles, getTile } = useTiles();
   
   // Enable route cycling with Shift+Tab
   useRouteCycling();
@@ -128,7 +128,17 @@ export default function MapEditor() {
   
   // Label filtering (multiple labels)
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
-  const allLabels = getAllLabels();
+  
+  // Get labels only from published tiles
+  const publishedLabels = React.useMemo(() => {
+    const labelSet = new Set<string>();
+    tiles.forEach(tile => {
+      if (tile.labels) {
+        tile.labels.forEach(label => labelSet.add(label));
+      }
+    });
+    return Array.from(labelSet).sort();
+  }, [tiles]);
   
   // Filter tiles by selected labels (tile must have ALL selected labels)
   const filteredTiles = selectedLabels.length > 0
@@ -667,7 +677,7 @@ export default function MapEditor() {
         <p className="text-[10px] opacity-60 mb-2">Press F to toggle tools</p>
         
         {/* Label Filter */}
-        {allLabels.length > 0 && (
+        {publishedLabels.length > 0 && (
           <div className="mb-4">
             <div className="text-[10px] opacity-60 uppercase tracking-wide mb-2">Filter by Labels</div>
             
@@ -708,7 +718,7 @@ export default function MapEditor() {
             
             {/* Available Labels */}
             <div className="flex flex-wrap gap-1">
-              {allLabels
+              {publishedLabels
                 .filter(label => !selectedLabels.includes(label))
                 .map(label => (
                   <button
