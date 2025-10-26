@@ -14,7 +14,9 @@ import {
   ArrowDownIcon, 
   PlusIcon,
   ChevronUpIcon,
-  XMarkIcon 
+  XMarkIcon,
+  FunnelIcon,
+  MagnifyingGlassIcon
 } from "@heroicons/react/24/outline";
 
 export function meta() {
@@ -128,6 +130,8 @@ export default function MapEditor() {
   
   // Label filtering (multiple labels)
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
+  const [labelsMenuOpen, setLabelsMenuOpen] = useState(false);
+  const [labelSearchQuery, setLabelSearchQuery] = useState('');
   
   // Get labels only from published tiles
   const publishedLabels = React.useMemo(() => {
@@ -139,6 +143,25 @@ export default function MapEditor() {
     });
     return Array.from(labelSet).sort();
   }, [tiles]);
+  
+  // Filter labels by search query
+  const filteredPublishedLabels = React.useMemo(() => {
+    if (!labelSearchQuery.trim()) return publishedLabels;
+    const query = labelSearchQuery.toLowerCase();
+    return publishedLabels.filter(label => label.toLowerCase().includes(query));
+  }, [publishedLabels, labelSearchQuery]);
+  
+  // Split labels into active and inactive
+  const activeLabels = filteredPublishedLabels.filter(label => selectedLabels.includes(label));
+  const inactiveLabels = filteredPublishedLabels.filter(label => !selectedLabels.includes(label));
+  
+  const toggleLabel = (label: string) => {
+    setSelectedLabels(prev => 
+      prev.includes(label) 
+        ? prev.filter(l => l !== label)
+        : [...prev, label]
+    );
+  };
   
   // Filter tiles by selected labels (tile must have ALL selected labels)
   const filteredTiles = selectedLabels.length > 0
@@ -668,74 +691,122 @@ export default function MapEditor() {
         </div>
       </div>
 
+      {/* Label Filter Menu - Left Expandable on Hover */}
+      {publishedLabels.length > 0 && (
+        <div
+          onMouseEnter={() => setLabelsMenuOpen(true)}
+          onMouseLeave={() => setLabelsMenuOpen(false)}
+          className="fixed left-0 top-16 bottom-0 z-40 transition-all duration-300"
+          style={{
+            width: labelsMenuOpen ? '320px' : '0px'
+          }}
+        >
+          {/* Expandable Filter Panel */}
+          <div
+            className="h-full border-r-2 border-black overflow-y-auto transition-all duration-300"
+            style={{
+              backgroundColor: 'var(--theme-bg-panel)',
+              width: '320px',
+              transform: labelsMenuOpen ? 'translateX(0)' : 'translateX(-320px)'
+            }}
+          >
+            <div className="p-4">
+              {/* Header with Icon */}
+              <div className="flex items-center gap-3 mb-4">
+                <div
+                  className="p-2 border-2 border-black"
+                  style={{
+                    backgroundColor: 'var(--theme-accent)',
+                    boxShadow: '2px 2px 0 #000'
+                  }}
+                >
+                  <FunnelIcon className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold uppercase tracking-wide">Filter Labels</h3>
+              </div>
+              
+              {/* Search Input */}
+              <div className="mb-4">
+                <div className="relative">
+                  <MagnifyingGlassIcon className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 opacity-60" />
+                  <input
+                    type="text"
+                    value={labelSearchQuery}
+                    onChange={(e) => setLabelSearchQuery(e.target.value)}
+                    placeholder="Search labels..."
+                    className="w-full pl-8 pr-3 py-2 text-xs border-2 border-black"
+                    style={{
+                      backgroundColor: 'var(--theme-bg-light)',
+                      boxShadow: '2px 2px 0 #000'
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {/* Active Labels (Green) */}
+              {activeLabels.length > 0 && (
+                <div className="mb-4">
+                  <div className="text-[10px] opacity-60 uppercase mb-2 font-bold">Active Filters</div>
+                  <div className="space-y-1">
+                    {activeLabels.map(label => (
+                      <button
+                        key={label}
+                        onClick={() => toggleLabel(label)}
+                        className="w-full px-3 py-2 border-2 border-black text-xs text-left font-bold hover:opacity-80 transition-opacity"
+                        style={{
+                          backgroundColor: '#90EE90',
+                          boxShadow: '2px 2px 0 #000'
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Inactive Labels (Red) */}
+              {inactiveLabels.length > 0 && (
+                <div>
+                  <div className="text-[10px] opacity-60 uppercase mb-2 font-bold">Available Labels</div>
+                  <div className="space-y-1">
+                    {inactiveLabels.map(label => (
+                      <button
+                        key={label}
+                        onClick={() => toggleLabel(label)}
+                        className="w-full px-3 py-2 border-2 border-black text-xs text-left hover:opacity-80 transition-opacity"
+                        style={{
+                          backgroundColor: '#FFB6B6',
+                          boxShadow: '2px 2px 0 #000'
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {filteredPublishedLabels.length === 0 && labelSearchQuery && (
+                <div className="text-xs opacity-60 text-center py-4">
+                  No labels match your search
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tile Palette - Left Sidebar */}
       <div 
-        className="fixed left-0 top-16 bottom-0 w-64 border-r-2 border-black overflow-y-auto z-30 p-4"
-        style={{ backgroundColor: 'var(--theme-bg-panel)' }}
+        className="fixed top-16 bottom-0 w-64 border-r-2 border-black overflow-y-auto z-30 p-4 transition-all duration-300"
+        style={{ 
+          backgroundColor: 'var(--theme-bg-panel)',
+          left: labelsMenuOpen && publishedLabels.length > 0 ? '320px' : '0px'
+        }}
       >
         <h2 className="text-lg font-bold mb-2">Tiles</h2>
         <p className="text-[10px] opacity-60 mb-2">Press F to toggle tools</p>
-        
-        {/* Label Filter */}
-        {publishedLabels.length > 0 && (
-          <div className="mb-4">
-            <div className="text-[10px] opacity-60 uppercase tracking-wide mb-2">Filter by Labels</div>
-            
-            {/* Selected Labels */}
-            {selectedLabels.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-2">
-                {selectedLabels.map(label => (
-                  <div
-                    key={label}
-                    className="inline-flex items-center gap-1 px-2 py-1 border-2 border-black text-[10px]"
-                    style={{ 
-                      backgroundColor: 'var(--theme-accent)',
-                      boxShadow: '1px 1px 0 #000'
-                    }}
-                  >
-                    <span>{label}</span>
-                    <button
-                      onClick={() => setSelectedLabels(prev => prev.filter(l => l !== label))}
-                      className="hover:text-red-600"
-                      title="Remove filter"
-                    >
-                      <XMarkIcon className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={() => setSelectedLabels([])}
-                  className="px-2 py-1 border-2 border-black text-[10px] hover:bg-red-200"
-                  style={{ 
-                    backgroundColor: 'var(--theme-bg-light)',
-                    boxShadow: '1px 1px 0 #000'
-                  }}
-                >
-                  Clear All
-                </button>
-              </div>
-            )}
-            
-            {/* Available Labels */}
-            <div className="flex flex-wrap gap-1">
-              {publishedLabels
-                .filter(label => !selectedLabels.includes(label))
-                .map(label => (
-                  <button
-                    key={label}
-                    onClick={() => setSelectedLabels(prev => [...prev, label])}
-                    className="px-2 py-1 border-2 border-black text-[10px] hover:bg-[var(--theme-accent)]"
-                    style={{ 
-                      backgroundColor: 'var(--theme-bg-panel)',
-                      boxShadow: '1px 1px 0 #000'
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-            </div>
-          </div>
-        )}
         
         {filteredTiles.length === 0 ? (
           <div className="text-sm opacity-60 text-center">
@@ -796,18 +867,18 @@ export default function MapEditor() {
       {/* Map Grid */}
       <div 
         ref={mapContainerRef}
-        className="flex-1 mt-16 overflow-auto relative z-0"
+        className="flex-1 mt-16 overflow-auto relative z-0 transition-all duration-300"
         style={{ 
-          marginLeft: '256px', // 256px tiles sidebar
+          marginLeft: labelsMenuOpen && publishedLabels.length > 0 ? '576px' : '256px', // 320px filter + 256px tiles OR just 256px tiles
           backgroundColor: 'var(--theme-bg-light)',
         }}
         onMouseLeave={handleMouseLeaveGrid}
       >
         {/* Active Layer Indicator - Top Left (after sidebar) */}
         <div 
-          className="fixed top-20 z-20 px-4 py-2 border-2 border-black"
+          className="fixed top-20 z-20 px-4 py-2 border-2 border-black transition-all duration-300"
           style={{ 
-            left: '264px', // After tiles sidebar (256px) + padding
+            left: labelsMenuOpen && publishedLabels.length > 0 ? '584px' : '264px', // After filter + tiles OR just tiles + padding
             backgroundColor: 'var(--theme-bg-medium)',
             boxShadow: '4px 4px 0 #000'
           }}
