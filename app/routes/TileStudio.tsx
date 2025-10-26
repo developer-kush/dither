@@ -5,15 +5,11 @@ import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useRouteCycling } from "../hooks/useRouteCycling";
 import { GameButton } from "../components/GameButton";
 import { NavBar } from "../components/NavBar";
-import GameMenu from "../components/GameMenu";
-import GameSection from "../components/GameSection";
+import { GameMenu } from "../components/GameMenu";
+import { GameSection } from "../components/GameSection";
 import { 
   PlusIcon, 
   TrashIcon, 
-  PlayIcon,
-  PauseIcon,
-  ArrowLeftIcon,
-  ArrowRightIcon,
   Squares2X2Icon,
   XMarkIcon
 } from "@heroicons/react/24/outline";
@@ -37,14 +33,6 @@ interface CompositeTile {
   }[];
 }
 
-// Legacy animation support (will be moved to a separate tool later)
-interface AnimatedTile {
-  id: string;
-  name: string;
-  frames: string[]; // Array of tile IDs
-  fps: number; // Frames per second
-}
-
 export default function TileStudio() {
   const { tiles, getTile, saveTile, folders, publishTile, unpublishTile } = useTiles();
   
@@ -59,10 +47,6 @@ export default function TileStudio() {
   const [showTileSelector, setShowTileSelector] = useState(false);
   const [pendingPosition, setPendingPosition] = useState<{x: number, y: number} | null>(null);
   const [tilesMenuOpen, setTilesMenuOpen] = useState(false);
-  
-  // Legacy animation tiles (kept for backward compatibility)
-  const [animatedTilesData, setAnimatedTilesData] = useLocalStorage<AnimatedTile[]>('animated-tiles', []);
-  const [animatedTiles, setAnimatedTiles] = useState<AnimatedTile[]>(animatedTilesData);
 
   // Set theme
   useEffect(() => {
@@ -76,67 +60,6 @@ export default function TileStudio() {
   useEffect(() => {
     setCompositeTilesData(compositeTiles);
   }, [compositeTiles, setCompositeTilesData]);
-
-  // Save animated tiles to localStorage
-  useEffect(() => {
-    setAnimatedTilesData(animatedTiles);
-  }, [animatedTiles, setAnimatedTilesData]);
-
-  // Animation loop
-  useEffect(() => {
-    if (!isPlaying || !selectedAnimatedTile || selectedAnimatedTile.frames.length === 0) {
-      return;
-    }
-
-    const animate = (timestamp: number) => {
-      const frameDuration = 1000 / (selectedAnimatedTile.fps || 8);
-      
-      if (timestamp - lastFrameTimeRef.current >= frameDuration) {
-        setCurrentFrameIndex(prev => (prev + 1) % selectedAnimatedTile.frames.length);
-        lastFrameTimeRef.current = timestamp;
-      }
-      
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
-
-    animationFrameRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [isPlaying, selectedAnimatedTile]);
-
-  // Draw current frame to canvas
-  useEffect(() => {
-    if (!selectedAnimatedTile || !previewCanvasRef.current) return;
-    
-    const canvas = previewCanvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const frameId = selectedAnimatedTile.frames[currentFrameIndex];
-    if (!frameId) return;
-
-    const tile = getTile(frameId);
-    if (!tile) return;
-
-    canvas.width = tile.size;
-    canvas.height = tile.size;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw tile
-    for (let y = 0; y < tile.size; y++) {
-      for (let x = 0; x < tile.size; x++) {
-        const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
-        ctx.fillStyle = color;
-        ctx.fillRect(x, y, 1, 1);
-      }
-    }
-  }, [selectedAnimatedTile, currentFrameIndex, getTile]);
 
   // === COMPOSITE TILE FUNCTIONS ===
   
@@ -257,147 +180,6 @@ export default function TileStudio() {
     });
   };
 
-  // === LEGACY ANIMATED TILE FUNCTIONS ===
-
-  const createNewAnimatedTile = () => {
-    const newTile: AnimatedTile = {
-      id: `anim_${Date.now()}`,
-      name: `Animated Tile ${animatedTiles.length + 1}`,
-      frames: [],
-      fps: 8
-    };
-    setAnimatedTiles(prev => [...prev, newTile]);
-    setSelectedAnimatedTile(newTile);
-    setEditingName(newTile.name);
-    setFps(newTile.fps);
-    setCurrentFrameIndex(0);
-    setIsPlaying(false);
-  };
-
-  const deleteAnimatedTile = (id: string) => {
-    if (window.confirm('Delete this animated tile?')) {
-      setAnimatedTiles(prev => prev.filter(t => t.id !== id));
-      if (selectedAnimatedTile?.id === id) {
-        setSelectedAnimatedTile(null);
-      }
-    }
-  };
-
-  const addFrameToAnimation = (tileId: string) => {
-    if (!selectedAnimatedTile) return;
-
-    setAnimatedTiles(prev => prev.map(at => 
-      at.id === selectedAnimatedTile.id 
-        ? { ...at, frames: [...at.frames, tileId] }
-        : at
-    ));
-    
-    setSelectedAnimatedTile(prev => 
-      prev ? { ...prev, frames: [...prev.frames, tileId] } : null
-    );
-  };
-
-  const removeFrame = (index: number) => {
-    if (!selectedAnimatedTile) return;
-
-    const newFrames = selectedAnimatedTile.frames.filter((_, i) => i !== index);
-    
-    setAnimatedTiles(prev => prev.map(at => 
-      at.id === selectedAnimatedTile.id 
-        ? { ...at, frames: newFrames }
-        : at
-    ));
-    
-    setSelectedAnimatedTile(prev => 
-      prev ? { ...prev, frames: newFrames } : null
-    );
-
-    if (currentFrameIndex >= newFrames.length && newFrames.length > 0) {
-      setCurrentFrameIndex(newFrames.length - 1);
-    }
-  };
-
-  const moveFrame = (fromIndex: number, toIndex: number) => {
-    if (!selectedAnimatedTile) return;
-    
-    const newFrames = [...selectedAnimatedTile.frames];
-    const [moved] = newFrames.splice(fromIndex, 1);
-    newFrames.splice(toIndex, 0, moved);
-
-    setAnimatedTiles(prev => prev.map(at => 
-      at.id === selectedAnimatedTile.id 
-        ? { ...at, frames: newFrames }
-        : at
-    ));
-    
-    setSelectedAnimatedTile(prev => 
-      prev ? { ...prev, frames: newFrames } : null
-    );
-  };
-
-  const updateName = () => {
-    if (!selectedAnimatedTile || !editingName.trim()) return;
-
-    setAnimatedTiles(prev => prev.map(at => 
-      at.id === selectedAnimatedTile.id 
-        ? { ...at, name: editingName }
-        : at
-    ));
-    
-    setSelectedAnimatedTile(prev => 
-      prev ? { ...prev, name: editingName } : null
-    );
-  };
-
-  const updateFps = (newFps: number) => {
-    if (!selectedAnimatedTile) return;
-
-    setFps(newFps);
-    
-    setAnimatedTiles(prev => prev.map(at => 
-      at.id === selectedAnimatedTile.id 
-        ? { ...at, fps: newFps }
-        : at
-    ));
-    
-    setSelectedAnimatedTile(prev => 
-      prev ? { ...prev, fps: newFps } : null
-    );
-  };
-
-  const saveComplexTile = () => {
-    if (!selectedAnimatedTile || selectedAnimatedTile.frames.length === 0) {
-      alert('Please add at least one frame to save the complex tile');
-      return;
-    }
-
-    // Get the first frame as the base grid
-    const firstFrameTile = getTile(selectedAnimatedTile.frames[0]);
-    if (!firstFrameTile) {
-      alert('Error: Could not find first frame tile');
-      return;
-    }
-
-    // Save as a complex tile
-    const tileId = saveTile(
-      selectedAnimatedTile.name,
-      firstFrameTile.grid,
-      firstFrameTile.size,
-      null,
-      undefined,
-      true, // isComplex
-      selectedAnimatedTile.frames, // animationFrames
-      selectedAnimatedTile.fps // animationFps
-    );
-
-    // Auto-publish if enabled
-    if (shouldPublish) {
-      publishTile(tileId, null);
-      alert(`Complex tile "${selectedAnimatedTile.name}" saved and published to map editor!`);
-    } else {
-      alert(`Complex tile "${selectedAnimatedTile.name}" saved! You can publish it from the tile editor.`);
-    }
-  };
 
   // Get the basic tiles (non-complex, non-animated) for the tile selector
   const basicTiles = tiles.filter(t => !t.isComplex);
@@ -417,41 +199,41 @@ export default function TileStudio() {
             <div className="text-sm opacity-60 text-center py-4">
               <p>No composite tiles yet</p>
               <p className="text-xs mt-2">Create one below</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
               {compositeTiles.map(ct => (
                 <div
                   key={ct.id}
                   className={`border-2 border-black p-3 cursor-pointer transition-all ${
                     selectedCompositeTile?.id === ct.id ? 'ring-4 ring-blue-500' : ''
-                  }`}
-                  style={{ 
+                }`}
+                style={{ 
                     backgroundColor: 'var(--theme-bg-light)',
-                    boxShadow: '2px 2px 0 #000'
-                  }}
-                  onClick={() => {
+                  boxShadow: '2px 2px 0 #000'
+                }}
+                onClick={() => {
                     setSelectedCompositeTile(ct);
                     setEditingName(ct.name);
                   }}
                 >
                   <div className="font-bold text-sm mb-1">{ct.name}</div>
                   <div className="text-xs opacity-70">{ct.tiles.length} tiles</div>
-                  <GameButton
-                    icon
-                    onClick={(e) => {
-                      e.stopPropagation();
+                <GameButton
+                  icon
+                  onClick={(e) => {
+                    e.stopPropagation();
                       deleteCompositeTile(ct.id);
-                    }}
-                    style={{ padding: '4px', marginTop: '8px' }}
-                    title="Delete"
-                  >
-                    <TrashIcon className="w-3 h-3" />
-                  </GameButton>
-                </div>
-              ))}
-            </div>
-          )}
+                  }}
+                  style={{ padding: '4px', marginTop: '8px' }}
+                  title="Delete"
+                >
+                  <TrashIcon className="w-3 h-3" />
+                </GameButton>
+              </div>
+            ))}
+          </div>
+        )}
         </GameSection>
       </GameMenu>
 
@@ -506,8 +288,8 @@ export default function TileStudio() {
                   style={{ backgroundColor: 'var(--theme-bg-light)' }}
                 />
               </div>
-            </div>
-
+              </div>
+              
             {/* Canvas Grid - Show tiles and + buttons */}
             <div className="flex-1 p-8 border-2 border-black" style={{ backgroundColor: 'var(--theme-bg-medium)', boxShadow: '4px 4px 0 #000' }}>
               <div className="font-bold mb-6 text-lg flex items-center justify-between">
@@ -531,35 +313,35 @@ export default function TileStudio() {
                     {/* Render existing tiles */}
                     {selectedCompositeTile.tiles.map(tileEntry => {
                       const tile = getTile(tileEntry.tileId);
-                      if (!tile) return null;
+                    if (!tile) return null;
 
-                      return (
-                        <div
+                    return (
+                      <div 
                           key={`${tileEntry.offsetX},${tileEntry.offsetY}`}
                           className="relative border-2 border-black"
-                          style={{ 
+                        style={{ 
                             gridColumn: `${tileEntry.offsetX + 10} / span 1`,
                             gridRow: `${tileEntry.offsetY + 10} / span 1`,
-                            backgroundColor: 'var(--theme-bg-panel)',
-                          }}
-                        >
-                          <canvas
-                            ref={(canvas) => {
-                              if (!canvas) return;
-                              const ctx = canvas.getContext('2d');
-                              if (!ctx) return;
+                          backgroundColor: 'var(--theme-bg-panel)',
+                        }}
+                      >
+                        <canvas
+                          ref={(canvas) => {
+                            if (!canvas) return;
+                            const ctx = canvas.getContext('2d');
+                            if (!ctx) return;
 
-                              canvas.width = tile.size;
-                              canvas.height = tile.size;
+                            canvas.width = tile.size;
+                            canvas.height = tile.size;
 
-                              for (let y = 0; y < tile.size; y++) {
-                                for (let x = 0; x < tile.size; x++) {
-                                  const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
-                                  ctx.fillStyle = color;
-                                  ctx.fillRect(x, y, 1, 1);
-                                }
+                            for (let y = 0; y < tile.size; y++) {
+                              for (let x = 0; x < tile.size; x++) {
+                                const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
+                                ctx.fillStyle = color;
+                                ctx.fillRect(x, y, 1, 1);
                               }
-                            }}
+                            }
+                          }}
                             className="w-full h-full"
                             style={{ imageRendering: 'pixelated' }}
                           />
@@ -604,9 +386,9 @@ export default function TileStudio() {
                 </div>
               )}
             </div>
-          </div>
-        )}
-      </div>
+                </div>
+              )}
+            </div>
 
       {/* Tile Selector Modal */}
       {showTileSelector && (
@@ -632,50 +414,50 @@ export default function TileStudio() {
               <div className="text-center p-8 opacity-60">
                 <p>No basic tiles available</p>
                 <Link to="/tile-editor" className="underline">Create tiles first in Tile Editor</Link>
-              </div>
-            ) : (
+                </div>
+              ) : (
               <div className="grid grid-cols-6 gap-4">
                 {basicTiles.map(tile => (
-                  <div
-                    key={tile.id}
+                      <div
+                        key={tile.id}
                     className="border-2 border-black cursor-pointer p-3 transition-all hover:scale-105"
-                    style={{ 
-                      backgroundColor: 'var(--theme-bg-panel)',
-                      boxShadow: '2px 2px 0 #000'
-                    }}
+                        style={{ 
+                          backgroundColor: 'var(--theme-bg-panel)',
+                          boxShadow: '2px 2px 0 #000'
+                        }}
                     onClick={() => handleTileSelected(tile.id)}
-                  >
-                    <canvas
-                      ref={(canvas) => {
-                        if (!canvas) return;
-                        const ctx = canvas.getContext('2d');
-                        if (!ctx) return;
+                      >
+                        <canvas
+                          ref={(canvas) => {
+                            if (!canvas) return;
+                            const ctx = canvas.getContext('2d');
+                            if (!ctx) return;
 
-                        canvas.width = tile.size;
-                        canvas.height = tile.size;
+                            canvas.width = tile.size;
+                            canvas.height = tile.size;
 
-                        for (let y = 0; y < tile.size; y++) {
-                          for (let x = 0; x < tile.size; x++) {
-                            const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
-                            ctx.fillStyle = color;
-                            ctx.fillRect(x, y, 1, 1);
-                          }
-                        }
-                      }}
-                      style={{ 
-                        imageRendering: 'pixelated',
-                        width: '100%',
-                        height: 'auto'
-                      }}
-                    />
+                            for (let y = 0; y < tile.size; y++) {
+                              for (let x = 0; x < tile.size; x++) {
+                                const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
+                                ctx.fillStyle = color;
+                                ctx.fillRect(x, y, 1, 1);
+                              }
+                            }
+                          }}
+                          style={{ 
+                            imageRendering: 'pixelated',
+                            width: '100%',
+                            height: 'auto'
+                          }}
+                        />
                     <div className="text-xs mt-2 text-center font-bold truncate">{tile.name}</div>
-                  </div>
+                      </div>
                 ))}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 }
