@@ -693,9 +693,12 @@ export default function MapEditor() {
 
       {/* Combined Left Pane - Single container that slides as one */}
       <div 
-        className="fixed top-16 bottom-0 z-30 flex transition-all duration-200 ease-in-out"
+        className="fixed top-16 bottom-0 left-0 z-30 flex transition-transform duration-150 ease-out"
         style={{ 
-          left: labelsMenuOpen && publishedLabels.length > 0 ? '0px' : publishedLabels.length > 0 ? '-304px' : '0px', // Slide entire unit, leaving 16px trigger visible
+          transform: labelsMenuOpen && publishedLabels.length > 0 ? 'translate3d(0, 0, 0)' : publishedLabels.length > 0 ? 'translate3d(-304px, 0, 0)' : 'translate3d(0, 0, 0)',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+          contain: 'layout style paint',
         }}
       >
         {/* Filter Panel - Only visible if there are labels */}
