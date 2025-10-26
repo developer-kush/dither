@@ -13,7 +13,8 @@ import {
   ArrowUpIcon, 
   ArrowDownIcon, 
   PlusIcon,
-  ChevronUpIcon 
+  ChevronUpIcon,
+  XMarkIcon 
 } from "@heroicons/react/24/outline";
 
 export function meta() {
@@ -125,13 +126,15 @@ export default function MapEditor() {
   // Only show published tiles in map editor
   const tiles = allTiles.filter(tile => tile.isPublished);
   
-  // Label filtering
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
+  // Label filtering (multiple labels)
+  const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const allLabels = getAllLabels();
   
-  // Filter tiles by selected label
-  const filteredTiles = selectedLabel 
-    ? tiles.filter(tile => tile.labels?.includes(selectedLabel))
+  // Filter tiles by selected labels (tile must have ALL selected labels)
+  const filteredTiles = selectedLabels.length > 0
+    ? tiles.filter(tile => 
+        selectedLabels.every(label => tile.labels?.includes(label))
+      )
     : tiles;
   
   // Load layers from localStorage
@@ -666,26 +669,67 @@ export default function MapEditor() {
         {/* Label Filter */}
         {allLabels.length > 0 && (
           <div className="mb-4">
-            <select
-              value={selectedLabel || ''}
-              onChange={(e) => setSelectedLabel(e.target.value || null)}
-              className="w-full px-2 py-1 text-xs border-2 border-black"
-              style={{
-                backgroundColor: 'var(--theme-bg-light)',
-                boxShadow: '2px 2px 0 #000'
-              }}
-            >
-              <option value="">All Labels</option>
-              {allLabels.map(label => (
-                <option key={label} value={label}>{label}</option>
-              ))}
-            </select>
+            <div className="text-[10px] opacity-60 uppercase tracking-wide mb-2">Filter by Labels</div>
+            
+            {/* Selected Labels */}
+            {selectedLabels.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {selectedLabels.map(label => (
+                  <div
+                    key={label}
+                    className="inline-flex items-center gap-1 px-2 py-1 border-2 border-black text-[10px]"
+                    style={{ 
+                      backgroundColor: 'var(--theme-accent)',
+                      boxShadow: '1px 1px 0 #000'
+                    }}
+                  >
+                    <span>{label}</span>
+                    <button
+                      onClick={() => setSelectedLabels(prev => prev.filter(l => l !== label))}
+                      className="hover:text-red-600"
+                      title="Remove filter"
+                    >
+                      <XMarkIcon className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setSelectedLabels([])}
+                  className="px-2 py-1 border-2 border-black text-[10px] hover:bg-red-200"
+                  style={{ 
+                    backgroundColor: 'var(--theme-bg-light)',
+                    boxShadow: '1px 1px 0 #000'
+                  }}
+                >
+                  Clear All
+                </button>
+              </div>
+            )}
+            
+            {/* Available Labels */}
+            <div className="flex flex-wrap gap-1">
+              {allLabels
+                .filter(label => !selectedLabels.includes(label))
+                .map(label => (
+                  <button
+                    key={label}
+                    onClick={() => setSelectedLabels(prev => [...prev, label])}
+                    className="px-2 py-1 border-2 border-black text-[10px] hover:bg-[var(--theme-accent)]"
+                    style={{ 
+                      backgroundColor: 'var(--theme-bg-panel)',
+                      boxShadow: '1px 1px 0 #000'
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+            </div>
           </div>
         )}
         
         {filteredTiles.length === 0 ? (
           <div className="text-sm opacity-60 text-center">
-            <p>No published tiles{selectedLabel ? ' with this label' : ''}</p>
+            <p>No published tiles{selectedLabels.length > 0 ? ' with these labels' : ''}</p>
             <Link to="/tile-editor" className="underline">Create & publish tiles</Link>
           </div>
         ) : (

@@ -10,18 +10,32 @@ export default function TilesPage() {
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [newLabel, setNewLabel] = useState('');
+  const [filterLabels, setFilterLabels] = useState<string[]>([]);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const allLabels = getAllLabels();
   
   // Enable route cycling with Shift+Tab
   useRouteCycling();
 
-  // Filter tiles based on search query
+  // Filter tiles based on search query and labels
   const filteredTiles = useMemo(() => {
-    if (!searchQuery.trim()) return tiles;
-    const query = searchQuery.toLowerCase();
-    return tiles.filter(tile => tile.name.toLowerCase().includes(query));
-  }, [tiles, searchQuery]);
+    let result = tiles;
+    
+    // Filter by labels (must have ALL selected labels)
+    if (filterLabels.length > 0) {
+      result = result.filter(tile => 
+        filterLabels.every(label => tile.labels?.includes(label))
+      );
+    }
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(tile => tile.name.toLowerCase().includes(query));
+    }
+    
+    return result;
+  }, [tiles, searchQuery, filterLabels]);
 
   // Get selected tile
   const selectedTile = selectedTileId ? tiles.find(t => t.id === selectedTileId) : null;
@@ -110,9 +124,9 @@ export default function TilesPage() {
       <div className="flex-1 flex mt-16 overflow-hidden">
         {/* Left Side - Tiles Grid (3/4 width) */}
         <div className="flex-1 overflow-y-auto relative">
-          {/* Fixed Search Bar */}
+          {/* Fixed Search Bar and Filters */}
           <div className="sticky top-0 z-10 p-8 pb-4" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
-            <div className="relative max-w-md">
+            <div className="relative max-w-md mb-3">
               <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 opacity-60" />
               <input
                 ref={searchInputRef}
@@ -127,7 +141,69 @@ export default function TilesPage() {
                 }}
               />
             </div>
-            {searchQuery && (
+            
+            {/* Label Filters */}
+            {allLabels.length > 0 && (
+              <div className="mb-2">
+                <div className="text-[10px] opacity-60 uppercase tracking-wide mb-2">Filter by Labels</div>
+                
+                {/* Selected Filter Labels */}
+                {filterLabels.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {filterLabels.map(label => (
+                      <div
+                        key={label}
+                        className="inline-flex items-center gap-1 px-2 py-1 border-2 border-black text-[10px]"
+                        style={{ 
+                          backgroundColor: 'var(--theme-accent)',
+                          boxShadow: '1px 1px 0 #000'
+                        }}
+                      >
+                        <span>{label}</span>
+                        <button
+                          onClick={() => setFilterLabels(prev => prev.filter(l => l !== label))}
+                          className="hover:text-red-600"
+                          title="Remove filter"
+                        >
+                          <XMarkIcon className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setFilterLabels([])}
+                      className="px-2 py-1 border-2 border-black text-[10px] hover:bg-red-200"
+                      style={{ 
+                        backgroundColor: 'var(--theme-bg-light)',
+                        boxShadow: '1px 1px 0 #000'
+                      }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+                
+                {/* Available Labels */}
+                <div className="flex flex-wrap gap-1">
+                  {allLabels
+                    .filter(label => !filterLabels.includes(label))
+                    .map(label => (
+                      <button
+                        key={label}
+                        onClick={() => setFilterLabels(prev => [...prev, label])}
+                        className="px-2 py-1 border-2 border-black text-[10px] hover:bg-[var(--theme-accent)]"
+                        style={{ 
+                          backgroundColor: 'var(--theme-bg-panel)',
+                          boxShadow: '1px 1px 0 #000'
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+            
+            {(searchQuery || filterLabels.length > 0) && (
               <div className="mt-2 text-sm opacity-60">
                 Found {filteredTiles.length} tile{filteredTiles.length !== 1 ? 's' : ''}
               </div>
