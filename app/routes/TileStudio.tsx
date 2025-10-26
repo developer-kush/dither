@@ -43,7 +43,6 @@ export default function TileStudio() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [editingName, setEditingName] = useState("");
   const [fps, setFps] = useState(8);
-  const [publishFolderId, setPublishFolderId] = useState<string | null>(null);
   const [shouldPublish, setShouldPublish] = useState(true); // Auto-publish by default
   
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -252,7 +251,7 @@ export default function TileStudio() {
 
     // Auto-publish if enabled
     if (shouldPublish) {
-      publishTile(tileId, publishFolderId);
+      publishTile(tileId, null);
       alert(`Complex tile "${selectedAnimatedTile.name}" saved and published to map editor!`);
     } else {
       alert(`Complex tile "${selectedAnimatedTile.name}" saved! You can publish it from the tile editor.`);
@@ -384,7 +383,7 @@ export default function TileStudio() {
                     
                     {/* Publish Settings */}
                     <div className="p-3 border-2 border-black bg-[var(--theme-bg-panel)]" style={{ boxShadow: '2px 2px 0 #000' }}>
-                      <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                      <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={shouldPublish}
@@ -393,22 +392,6 @@ export default function TileStudio() {
                         />
                         <span className="text-xs font-bold">Publish to Map Editor</span>
                       </label>
-                      
-                      {shouldPublish && (
-                        <select
-                          value={publishFolderId || ''}
-                          onChange={(e) => setPublishFolderId(e.target.value || null)}
-                          className="w-full px-2 py-1 text-xs border-2 border-black bg-white"
-                          style={{ boxShadow: '1px 1px 0 #000' }}
-                        >
-                          <option value="">Root Folder</option>
-                          {folders.map(folder => (
-                            <option key={folder.id} value={folder.id}>
-                              {folder.name}
-                            </option>
-                          ))}
-                        </select>
-                      )}
                     </div>
                     
                     <GameButton 

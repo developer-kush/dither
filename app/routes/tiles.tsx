@@ -2,14 +2,16 @@ import React, { useState, useMemo } from 'react';
 import { useTiles } from '../hooks/useTiles';
 import { useRouteCycling } from '../hooks/useRouteCycling';
 import { NavBar } from '../components/NavBar';
-import { TrashIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, MagnifyingGlassIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 
 export default function TilesPage() {
-  const { tiles, deleteTile, renameTile, publishTile, unpublishTile, folders } = useTiles();
+  const { tiles, deleteTile, renameTile, publishTile, unpublishTile, getAllLabels, addLabelToTile, removeLabelFromTile } = useTiles();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [newLabel, setNewLabel] = useState('');
   const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const allLabels = getAllLabels();
   
   // Enable route cycling with Shift+Tab
   useRouteCycling();
@@ -67,6 +69,18 @@ export default function TilesPage() {
     } else {
       publishTile(selectedTile.id, selectedTile.publishedFolderId || null);
     }
+  };
+
+  const handleAddLabel = () => {
+    if (!selectedTileId || !newLabel.trim()) return;
+    const trimmedLabel = newLabel.trim();
+    addLabelToTile(selectedTileId, trimmedLabel);
+    setNewLabel('');
+  };
+
+  const handleRemoveLabel = (label: string) => {
+    if (!selectedTileId) return;
+    removeLabelFromTile(selectedTileId, label);
   };
 
   // Create image from tile grid
@@ -232,6 +246,87 @@ export default function TilesPage() {
                     boxShadow: '2px 2px 0 #000'
                   }}
                 />
+              </div>
+
+              {/* Labels Management */}
+              <div className="mb-6 p-4 border-2 border-black" style={{ backgroundColor: 'var(--theme-bg-medium)', boxShadow: '4px 4px 0 #000' }}>
+                <div className="text-sm font-bold mb-3">Labels</div>
+                
+                {/* Existing Labels */}
+                {selectedTile.labels && selectedTile.labels.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {selectedTile.labels.map(label => (
+                      <div
+                        key={label}
+                        className="inline-flex items-center gap-1 px-2 py-1 border-2 border-black text-xs"
+                        style={{ 
+                          backgroundColor: 'var(--theme-bg-light)',
+                          boxShadow: '1px 1px 0 #000'
+                        }}
+                      >
+                        <span>{label}</span>
+                        <button
+                          onClick={() => handleRemoveLabel(label)}
+                          className="hover:text-red-600"
+                          title="Remove label"
+                        >
+                          <XMarkIcon className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs opacity-60 mb-3">No labels yet</div>
+                )}
+                
+                {/* Add New Label */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAddLabel();
+                      }
+                    }}
+                    placeholder="Add label..."
+                    className="flex-1 px-2 py-1 text-xs border-2 border-black"
+                    style={{
+                      backgroundColor: 'var(--theme-bg-light)',
+                      boxShadow: '1px 1px 0 #000'
+                    }}
+                  />
+                  <button
+                    onClick={handleAddLabel}
+                    className="px-2 py-1 border-2 border-black bg-[var(--theme-accent)] hover:opacity-80"
+                    style={{ boxShadow: '1px 1px 0 #000' }}
+                    title="Add label"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                {/* Quick Select from All Labels */}
+                {allLabels.length > 0 && (
+                  <div className="mt-3">
+                    <div className="text-[10px] opacity-60 mb-2">Quick add:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {allLabels
+                        .filter(label => !selectedTile.labels?.includes(label))
+                        .map(label => (
+                          <button
+                            key={label}
+                            onClick={() => addLabelToTile(selectedTileId!, label)}
+                            className="px-2 py-1 border border-black text-[10px] hover:bg-[var(--theme-accent)] transition-colors"
+                            style={{ backgroundColor: 'var(--theme-bg-panel)' }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Publishing Status */}

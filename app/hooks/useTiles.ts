@@ -5,14 +5,15 @@ export interface Tile {
   name: string;
   grid: string[][];
   size: number;
-  folderId: string | null;
+  folderId: string | null; // Legacy, for backward compatibility
   createdAt: number;
   updatedAt: number;
   isComplex?: boolean; // True for animated/complex tiles
   animationFrames?: string[]; // Array of tile IDs for animation
   animationFps?: number; // Animation speed
   isPublished?: boolean; // True if published to map editor
-  publishedFolderId?: string | null; // Folder for published tiles in map editor
+  publishedFolderId?: string | null; // Legacy, for backward compatibility
+  labels?: string[]; // Array of label names
 }
 
 export interface Folder {
@@ -216,6 +217,41 @@ export function useTiles() {
     setTiles(newTiles);
   };
 
+  // Label management
+  const addLabelToTile = (tileId: string, label: string) => {
+    setTiles(prev => prev.map(tile => {
+      if (tile.id !== tileId) return tile;
+      const labels = tile.labels || [];
+      if (labels.includes(label)) return tile;
+      return { ...tile, labels: [...labels, label], updatedAt: Date.now() };
+    }));
+  };
+
+  const removeLabelFromTile = (tileId: string, label: string) => {
+    setTiles(prev => prev.map(tile => {
+      if (tile.id !== tileId) return tile;
+      const labels = tile.labels || [];
+      return { ...tile, labels: labels.filter(l => l !== label), updatedAt: Date.now() };
+    }));
+  };
+
+  const setTileLabels = (tileId: string, labels: string[]) => {
+    setTiles(prev => prev.map(tile => {
+      if (tile.id !== tileId) return tile;
+      return { ...tile, labels: [...labels], updatedAt: Date.now() };
+    }));
+  };
+
+  const getAllLabels = (): string[] => {
+    const labelSet = new Set<string>();
+    tiles.forEach(tile => {
+      if (tile.labels) {
+        tile.labels.forEach(label => labelSet.add(label));
+      }
+    });
+    return Array.from(labelSet).sort();
+  };
+
   return {
     tiles,
     folders,
@@ -230,6 +266,10 @@ export function useTiles() {
     deleteFolder,
     loadAllTiles,
     isLoaded,
+    addLabelToTile,
+    removeLabelFromTile,
+    setTileLabels,
+    getAllLabels,
   };
 }
 

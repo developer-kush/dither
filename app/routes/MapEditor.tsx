@@ -13,8 +13,7 @@ import {
   ArrowUpIcon, 
   ArrowDownIcon, 
   PlusIcon,
-  ChevronUpIcon,
-  FolderIcon 
+  ChevronUpIcon 
 } from "@heroicons/react/24/outline";
 
 export function meta() {
@@ -118,7 +117,7 @@ const GRID_SIZE = 100; // Number of cells in each direction
 type Tool = 'pen' | 'eraser';
 
 export default function MapEditor() {
-  const { tiles: allTiles, getTile, folders } = useTiles();
+  const { tiles: allTiles, getTile, getAllLabels } = useTiles();
   
   // Enable route cycling with Shift+Tab
   useRouteCycling();
@@ -126,13 +125,14 @@ export default function MapEditor() {
   // Only show published tiles in map editor
   const tiles = allTiles.filter(tile => tile.isPublished);
   
-  // Folder selection
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  // Label filtering
+  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
+  const allLabels = getAllLabels();
   
-  // Filter tiles by selected folder
-  const filteredTiles = selectedFolderId 
-    ? tiles.filter(tile => tile.publishedFolderId === selectedFolderId)
-    : tiles.filter(tile => !tile.publishedFolderId); // Root level tiles
+  // Filter tiles by selected label
+  const filteredTiles = selectedLabel 
+    ? tiles.filter(tile => tile.labels?.includes(selectedLabel))
+    : tiles;
   
   // Load layers from localStorage
   const [layersData, setLayersData] = useLocalStorage<any[]>('map-editor-layers', []);
@@ -655,60 +655,37 @@ export default function MapEditor() {
         </div>
       </div>
 
-      {/* Folder Browser - Far Left */}
-      <div 
-        className="fixed left-0 top-16 bottom-0 w-20 border-r-2 border-black overflow-y-auto z-30 p-2"
-        style={{ backgroundColor: 'var(--theme-bg-medium)' }}
-      >
-        <h3 className="text-[10px] font-bold mb-2 text-center opacity-60">FOLDERS</h3>
-        
-        {/* Root folder */}
-        <button
-          onClick={() => setSelectedFolderId(null)}
-          className={`w-full mb-2 p-2 border-2 border-black transition-all ${
-            selectedFolderId === null ? 'ring-2 ring-blue-500' : ''
-          }`}
-          style={{ 
-            backgroundColor: selectedFolderId === null ? 'var(--theme-accent)' : 'var(--theme-bg-panel)',
-            boxShadow: '2px 2px 0 #000'
-          }}
-          title="Root Folder"
-        >
-          <FolderIcon className="w-8 h-8 mx-auto" />
-          <div className="text-[8px] mt-1 font-bold">Root</div>
-        </button>
-        
-        {/* Other folders */}
-        {folders.map(folder => (
-          <button
-            key={folder.id}
-            onClick={() => setSelectedFolderId(folder.id)}
-            className={`w-full mb-2 p-2 border-2 border-black transition-all ${
-              selectedFolderId === folder.id ? 'ring-2 ring-blue-500' : ''
-            }`}
-            style={{ 
-              backgroundColor: selectedFolderId === folder.id ? 'var(--theme-accent)' : 'var(--theme-bg-panel)',
-              boxShadow: '2px 2px 0 #000'
-            }}
-            title={folder.name}
-          >
-            <FolderIcon className="w-8 h-8 mx-auto" />
-            <div className="text-[8px] mt-1 font-bold truncate">{folder.name}</div>
-          </button>
-        ))}
-      </div>
-
       {/* Tile Palette - Left Sidebar */}
       <div 
-        className="fixed left-20 top-16 bottom-0 w-64 border-r-2 border-black overflow-y-auto z-30 p-4"
+        className="fixed left-0 top-16 bottom-0 w-64 border-r-2 border-black overflow-y-auto z-30 p-4"
         style={{ backgroundColor: 'var(--theme-bg-panel)' }}
       >
         <h2 className="text-lg font-bold mb-2">Tiles</h2>
-        <p className="text-[10px] opacity-60 mb-4">Press F to toggle tools</p>
+        <p className="text-[10px] opacity-60 mb-2">Press F to toggle tools</p>
+        
+        {/* Label Filter */}
+        {allLabels.length > 0 && (
+          <div className="mb-4">
+            <select
+              value={selectedLabel || ''}
+              onChange={(e) => setSelectedLabel(e.target.value || null)}
+              className="w-full px-2 py-1 text-xs border-2 border-black"
+              style={{
+                backgroundColor: 'var(--theme-bg-light)',
+                boxShadow: '2px 2px 0 #000'
+              }}
+            >
+              <option value="">All Labels</option>
+              {allLabels.map(label => (
+                <option key={label} value={label}>{label}</option>
+              ))}
+            </select>
+          </div>
+        )}
         
         {filteredTiles.length === 0 ? (
           <div className="text-sm opacity-60 text-center">
-            <p>No published tiles{selectedFolderId ? ' in this folder' : ''}</p>
+            <p>No published tiles{selectedLabel ? ' with this label' : ''}</p>
             <Link to="/tile-editor" className="underline">Create & publish tiles</Link>
           </div>
         ) : (
@@ -767,7 +744,7 @@ export default function MapEditor() {
         ref={mapContainerRef}
         className="flex-1 mt-16 overflow-auto relative z-0"
         style={{ 
-          marginLeft: '336px', // 80px folder browser + 256px tiles
+          marginLeft: '256px', // 256px tiles sidebar
           backgroundColor: 'var(--theme-bg-light)',
         }}
         onMouseLeave={handleMouseLeaveGrid}
@@ -776,7 +753,7 @@ export default function MapEditor() {
         <div 
           className="fixed top-20 z-20 px-4 py-2 border-2 border-black"
           style={{ 
-            left: '344px', // After folder browser (80px) + tiles (256px) + padding
+            left: '264px', // After tiles sidebar (256px) + padding
             backgroundColor: 'var(--theme-bg-medium)',
             boxShadow: '4px 4px 0 #000'
           }}

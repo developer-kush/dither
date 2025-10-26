@@ -78,7 +78,6 @@ export default function PixelArtGenerator() {
   // Tile management
   const { tiles, folders, saveTile, deleteTile, renameTile, getTile, createFolder, renameFolder, deleteFolder, publishTile, unpublishTile } = useTiles();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [publishFolderId, setPublishFolderId] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -557,7 +556,7 @@ export default function PixelArtGenerator() {
       unpublishTile(currentTileId);
       showToast(`Tile "${currentTileName}" unpublished from map editor`, 'info');
     } else {
-      publishTile(currentTileId, publishFolderId);
+      publishTile(currentTileId, null);
       showToast(`Tile "${currentTileName}" published to map editor!`, 'success');
     }
   }
@@ -1119,23 +1118,9 @@ export default function PixelArtGenerator() {
           <div className="pt-2 border-t border-black/20">
             <div className="text-[10px] opacity-60 uppercase tracking-wide mb-2">Publish to Map Editor</div>
             
-            <select
-              value={publishFolderId || ''}
-              onChange={(e) => setPublishFolderId(e.target.value || null)}
-              className="w-full px-2 py-1 text-xs border-2 border-black bg-[var(--theme-bg-panel)] mb-2"
-              style={{ boxShadow: '2px 2px 0 #000' }}
-            >
-              <option value="">Root Folder</option>
-              {folders.map(folder => (
-                <option key={folder.id} value={folder.id}>
-                  {folder.name}
-                </option>
-              ))}
-            </select>
-            
             <button
               onClick={handleTogglePublish}
-              className={`w-full px-3 py-1 text-xs border-2 border-black transition-colors ${
+              className={`w-full px-3 py-2 text-xs border-2 border-black transition-colors ${
                 tiles.find(t => t.id === currentTileId)?.isPublished
                   ? 'bg-green-200 hover:bg-red-200'
                   : 'bg-[var(--theme-bg-light)] hover:bg-green-200'
