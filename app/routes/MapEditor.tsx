@@ -13,7 +13,8 @@ import {
   ArrowUpIcon, 
   ArrowDownIcon, 
   PlusIcon,
-  ChevronUpIcon 
+  ChevronUpIcon,
+  FolderIcon 
 } from "@heroicons/react/24/outline";
 
 export function meta() {
@@ -673,7 +674,7 @@ export default function MapEditor() {
           }}
           title="Root Folder"
         >
-          <div className="text-2xl">📁</div>
+          <FolderIcon className="w-8 h-8 mx-auto" />
           <div className="text-[8px] mt-1 font-bold">Root</div>
         </button>
         
@@ -691,7 +692,7 @@ export default function MapEditor() {
             }}
             title={folder.name}
           >
-            <div className="text-2xl">📁</div>
+            <FolderIcon className="w-8 h-8 mx-auto" />
             <div className="text-[8px] mt-1 font-bold truncate">{folder.name}</div>
           </button>
         ))}

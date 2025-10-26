@@ -78,3 +78,18 @@ body {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
+
+/* Remove default focus outline and use custom styling */
+input:focus,
+textarea:focus,
+select:focus,
+button:focus {
+  outline: none;
+}
+
+/* Custom focus styling for inputs that matches theme */
+input:focus,
+textarea:focus,
+select:focus {
+  box-shadow: 0 0 0 3px var(--theme-accent) !important;
+}

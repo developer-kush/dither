@@ -419,7 +419,7 @@ export default function TileStudio() {
                         fontWeight: 'bold'
                       }}
                     >
-                      💾 Save {shouldPublish ? '& Publish' : 'to Tiles'}
+                      Save {shouldPublish ? '& Publish' : 'to Tiles'}
                     </GameButton>
                     
                     <div className="text-sm">

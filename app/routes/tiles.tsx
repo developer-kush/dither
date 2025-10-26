@@ -176,8 +176,8 @@ export default function TilesPage() {
                     {/* Tile Info */}
                     <div className="text-[10px] opacity-60 text-center mt-1">
                       {tile.size}x{tile.size}
-                      {tile.isComplex && <span className="ml-2 font-bold text-amber-700">●</span>}
-                      {tile.isPublished && <span className="ml-2 font-bold text-green-700">✓</span>}
+                      {tile.isComplex && <span className="ml-2 font-bold text-amber-700">ANIM</span>}
+                      {tile.isPublished && <span className="ml-2 font-bold text-green-700">PUB</span>}
                     </div>
                   </div>
                 );
@@ -239,8 +239,8 @@ export default function TilesPage() {
                 <div className="text-sm font-bold mb-2">Map Editor Status</div>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm">{selectedTile.isPublished ? 'Published' : 'Not Published'}</span>
-                  <span className={`text-lg ${selectedTile.isPublished ? 'text-green-700' : 'text-gray-400'}`}>
-                    {selectedTile.isPublished ? '✓' : '○'}
+                  <span className={`text-xs font-bold ${selectedTile.isPublished ? 'text-green-700' : 'text-gray-400'}`}>
+                    {selectedTile.isPublished ? 'YES' : 'NO'}
                   </span>
                 </div>
                 <button
@@ -274,7 +274,6 @@ export default function TilesPage() {
           ) : (
             <div className="flex items-center justify-center h-full text-center opacity-60">
               <div>
-                <div className="text-6xl mb-4">👆</div>
                 <p className="text-lg">Select a tile to view details</p>
               </div>
             </div>

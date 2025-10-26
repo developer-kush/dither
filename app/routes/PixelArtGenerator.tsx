@@ -1144,7 +1144,7 @@ export default function PixelArtGenerator() {
               title={tiles.find(t => t.id === currentTileId)?.isPublished ? 'Unpublish' : 'Publish'}
             >
               <div className="flex items-center justify-center gap-1 font-bold">
-                {tiles.find(t => t.id === currentTileId)?.isPublished ? '✓ Published' : 'Publish'}
+                {tiles.find(t => t.id === currentTileId)?.isPublished ? 'Published' : 'Publish'}
               </div>
             </button>
           </div>
