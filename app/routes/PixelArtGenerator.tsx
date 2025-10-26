@@ -980,7 +980,7 @@ export default function PixelArtGenerator() {
                 }}
               />
             </div>
-            <div className="bg-[var(--theme-bg-medium)] border-2 border-black px-3 py-1 mt-2 text-xs font-bold" style={{ boxShadow: '2px 2px 0 #000' }}>
+            <div className="bg-[var(--theme-bg-medium)] border-2 border-black px-3 py-1 mt-2 text-xs font-bold text-center" style={{ boxShadow: '2px 2px 0 #000', minWidth: '60px' }}>
               {(() => {
                 const level = Math.round(brushStrength * 12);
                 // Simplify the fraction
