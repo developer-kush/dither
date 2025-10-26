@@ -63,6 +63,20 @@
   --theme-accent: #66c0c0;
 }
 
+:root[data-theme="dark-green"] {
+  --theme-bg-light: #6b9b6b;
+  --theme-bg-medium: #8fb38f;
+  --theme-bg-panel: #b5d3b5;
+  --theme-accent: #4d7a4d;
+}
+
+:root[data-theme="light-purple"] {
+  --theme-bg-light: #d8c2e8;
+  --theme-bg-medium: #e8d4f4;
+  --theme-bg-panel: #f4e8f8;
+  --theme-accent: #c2a8d8;
+}
+
 html,
 body {
   background-color: var(--theme-bg-light);

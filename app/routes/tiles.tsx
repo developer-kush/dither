@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTiles } from '../hooks/useTiles';
 import { useRouteCycling } from '../hooks/useRouteCycling';
 import { NavBar } from '../components/NavBar';
@@ -16,6 +16,16 @@ export default function TilesPage() {
   
   // Enable route cycling with Shift+Tab
   useRouteCycling();
+
+  // Set theme for tiles manager
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', 'light-purple');
+    
+    return () => {
+      // Reset to default theme when leaving
+      document.documentElement.setAttribute('data-theme', 'green');
+    };
+  }, []);
 
   // Filter tiles based on search query and labels
   const filteredTiles = useMemo(() => {

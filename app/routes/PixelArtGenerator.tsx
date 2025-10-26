@@ -96,7 +96,7 @@ export default function PixelArtGenerator() {
     if (leftMenuOpen) {
       theme = 'gray';
     } else if (brushMode) {
-      theme = 'yellow';
+      theme = 'dark-green';
     } else if (boxMode) {
       theme = 'red';
     } else if (floodFillMode) {
