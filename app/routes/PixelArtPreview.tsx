@@ -8,7 +8,9 @@ interface PixelArtPreviewProps {
 
 export const PixelArtPreview: React.FC<PixelArtPreviewProps> = ({ grid, gridSize, windowPos }) => {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
-  const scale = Math.max(8, Math.floor(192 / gridSize));
+  // Fixed preview size of 192px regardless of grid size
+  const PREVIEW_SIZE = 192;
+  const scale = PREVIEW_SIZE / gridSize;
   
   // Calculate where the center of the virtual board is relative to the current window
   const virtualBoardCenter = gridSize * 1.5; // Center of 3x grid
@@ -58,10 +60,10 @@ export const PixelArtPreview: React.FC<PixelArtPreviewProps> = ({ grid, gridSize
   const showDownArrow = centerInWindow.y >= gridSize;
 
   return (
-    <div style={{ width: gridSize * scale, height: gridSize * scale, margin: '0 auto', position: 'relative' }}>
+    <div style={{ width: PREVIEW_SIZE, height: PREVIEW_SIZE, margin: '0 auto', position: 'relative' }}>
       <canvas
         ref={canvasRef}
-        style={{ width: gridSize * scale, height: gridSize * scale, display: 'block', imageRendering: 'pixelated' }}
+        style={{ width: PREVIEW_SIZE, height: PREVIEW_SIZE, display: 'block', imageRendering: 'pixelated' }}
       />
       
       {/* Directional arrows when center is out of view */}

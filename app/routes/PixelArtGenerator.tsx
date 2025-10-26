@@ -48,6 +48,7 @@ export default function PixelArtGenerator() {
   const [floodFillMode, setFloodFillMode] = useState(false);
   const [boxMode, setBoxMode] = useState(false);
   const [brushMode, setBrushMode] = useState(false);
+  const [brushStrength, setBrushStrength] = useLocalStorage('pixelart-brushStrength', 0.3);
   const [boxStart, setBoxStart] = useState<{x: number, y: number} | null>(null);
   const [leftMenuOpen, setLeftMenuOpen] = useState(false);
   const [hexInput, setHexInput] = useState(color.toUpperCase());
@@ -382,7 +383,7 @@ export default function PixelArtGenerator() {
     } else if (brushMode) {
       // Brush mode - blend colors
       const currentColor = grid[row][col];
-      const blendedColor = blendColors(currentColor, color);
+      const blendedColor = blendColors(currentColor, color, brushStrength);
       newBoard.setPixel(row, col, blendedColor);
       addRecentColor(blendedColor);
     } else {
@@ -762,19 +763,65 @@ export default function PixelArtGenerator() {
               <GameIcon type="grid" />
             </GameButton>
           </div>
+          
+          {/* Brush Strength Slider - Only visible in brush mode */}
+          {brushMode && (
+            <div className="mt-3 p-3 border-2 border-black" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-bold">Brush Depth</label>
+                <span className="text-sm font-mono" style={{ backgroundColor: 'var(--theme-bg-medium)', padding: '2px 6px', border: '1px solid #000' }}>
+                  {Math.round(brushStrength * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.05"
+                max="1"
+                step="0.05"
+                value={brushStrength}
+                onChange={(e) => setBrushStrength(parseFloat(e.target.value))}
+                className="w-full"
+                style={{
+                  accentColor: 'var(--theme-accent)',
+                }}
+              />
+              <div className="flex justify-between text-xs opacity-60 mt-1">
+                <span>Light</span>
+                <span>Heavy</span>
+              </div>
+            </div>
+          )}
         </GameSection>
 
         {/* Color Section */}
         <GameSection title="Color">
-          <div className="flex flex-col gap-2">
-            <input 
-              type="color" 
-              value={color} 
-              onChange={handleColorChange} 
-              className="game-input w-full h-12"
-            />
-            <div className="flex gap-2 items-center">
-              <label className="text-sm font-bold">Hex:</label>
+          <div className="flex flex-col gap-3">
+            {/* Color Picker Row */}
+            <div className="flex gap-2">
+              <input 
+                type="color" 
+                value={color} 
+                onChange={handleColorChange} 
+                className="game-input flex-1 h-12 cursor-pointer"
+              />
+              <button
+                onClick={() => setColor(BIN_COLOR)}
+                title="Transparent / Eraser"
+                className="border-2 border-black flex items-center justify-center"
+                style={{ 
+                  width: '48px',
+                  height: '48px',
+                  boxShadow: '2px 2px 0 #000',
+                  backgroundColor: color === BIN_COLOR ? 'var(--theme-accent)' : 'var(--theme-bg-medium)'
+                }}
+              >
+                <GameIcon type="eraser" />
+              </button>
+            </div>
+            
+            {/* Hex Input */}
+            <div className="flex items-center gap-2 border-2 border-black px-2 py-1" style={{ backgroundColor: 'var(--theme-bg-medium)' }}>
+              <label className="text-sm font-bold">Hex</label>
               <input
                 type="text"
                 value={hexInput}
@@ -796,18 +843,9 @@ export default function PixelArtGenerator() {
                   }
                 }}
                 placeholder="#000000"
-                className="game-input flex-1 px-2 py-1 text-sm font-mono"
-                style={{ minWidth: '80px' }}
+                className="flex-1 bg-transparent outline-none font-mono text-sm"
               />
             </div>
-            <GameButton
-              icon
-              style={color === BIN_COLOR ? { backgroundColor: 'var(--theme-accent)' } : {}}
-              onClick={() => setColor(BIN_COLOR)}
-              title="Transparent"
-            >
-              <GameIcon type="eraser" />
-            </GameButton>
           </div>
         </GameSection>
 
@@ -1057,27 +1095,38 @@ export default function PixelArtGenerator() {
               }}
             >
               {grid.map((row, y) =>
-                row.map((cell, x) => (
-                  <div
-                    key={`${y}-${x}`}
-                    className="border border-black/10 relative"
-                    style={{ 
-                      backgroundColor: cell === "rgba(0,0,0,0)" ? "transparent" : cell,
-                      cursor: boxMode ? 'crosshair' : floodFillMode ? 'crosshair' : 'pointer',
-                      outline: boxMode && boxStart && mouseDown && 
-                        x >= Math.min(boxStart.x, hoveredPixel?.x ?? boxStart.x) && 
-                        x <= Math.max(boxStart.x, hoveredPixel?.x ?? boxStart.x) &&
-                        y >= Math.min(boxStart.y, hoveredPixel?.y ?? boxStart.y) && 
-                        y <= Math.max(boxStart.y, hoveredPixel?.y ?? boxStart.y)
-                        ? '2px solid rgba(255, 100, 100, 0.8)' : 'none',
-                      outlineOffset: '-2px'
-                    }}
-                    onMouseDown={() => handleMouseDown(y, x)}
-                    onMouseEnter={() => { handleMouseEnter(y, x); setHoveredPixel({x, y, color: cell}); }}
-                    onMouseLeave={() => setHoveredPixel(null)}
-                    onMouseUp={() => handleMouseUp(y, x)}
-                  />
-                ))
+                row.map((cell, x) => {
+                  const isTransparent = cell === "rgba(0,0,0,0)";
+                  const isHovered = hoveredPixel?.x === x && hoveredPixel?.y === y;
+                  const previewColor = isHovered && brushMode ? blendColors(cell, color, brushStrength) : null;
+                  
+                  return (
+                    <div
+                      key={`${y}-${x}`}
+                      className="border border-black/10 relative"
+                      style={{ 
+                        backgroundColor: previewColor || (isTransparent ? "#f0f0f0" : cell),
+                        backgroundImage: isTransparent && !previewColor
+                          ? 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)'
+                          : 'none',
+                        cursor: boxMode ? 'crosshair' : floodFillMode ? 'crosshair' : brushMode ? 'cell' : 'pointer',
+                        outline: boxMode && boxStart && mouseDown && 
+                          x >= Math.min(boxStart.x, hoveredPixel?.x ?? boxStart.x) && 
+                          x <= Math.max(boxStart.x, hoveredPixel?.x ?? boxStart.x) &&
+                          y >= Math.min(boxStart.y, hoveredPixel?.y ?? boxStart.y) && 
+                          y <= Math.max(boxStart.y, hoveredPixel?.y ?? boxStart.y)
+                          ? '2px solid rgba(255, 100, 100, 0.8)' : 
+                          (isHovered && brushMode ? `3px solid ${color}` : 'none'),
+                        outlineOffset: '-2px',
+                        transition: brushMode ? 'background-color 0.1s ease' : 'none'
+                      }}
+                      onMouseDown={() => handleMouseDown(y, x)}
+                      onMouseEnter={() => { handleMouseEnter(y, x); setHoveredPixel({x, y, color: cell}); }}
+                      onMouseLeave={() => setHoveredPixel(null)}
+                      onMouseUp={() => handleMouseUp(y, x)}
+                    />
+                  );
+                })
               )}
             </div>
           </div>
