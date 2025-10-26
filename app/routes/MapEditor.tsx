@@ -691,120 +691,116 @@ export default function MapEditor() {
         </div>
       </div>
 
-      {/* Label Filter Menu - Left Expandable on Hover */}
-      {publishedLabels.length > 0 && (
-        <div
-          onMouseEnter={() => setLabelsMenuOpen(true)}
-          onMouseLeave={() => setLabelsMenuOpen(false)}
-          className="fixed left-0 top-16 bottom-0 z-40 transition-all duration-300"
-          style={{
-            width: labelsMenuOpen ? '320px' : '0px'
-          }}
-        >
-          {/* Expandable Filter Panel */}
-          <div
-            className="h-full border-r-2 border-black overflow-y-auto transition-all duration-300"
-            style={{
-              backgroundColor: 'var(--theme-bg-panel)',
-              width: '320px',
-              transform: labelsMenuOpen ? 'translateX(0)' : 'translateX(-320px)'
-            }}
-          >
-            <div className="p-4">
-              {/* Header with Icon */}
-              <div className="flex items-center gap-3 mb-4">
-                <div
-                  className="p-2 border-2 border-black"
-                  style={{
-                    backgroundColor: 'var(--theme-accent)',
-                    boxShadow: '2px 2px 0 #000'
-                  }}
-                >
-                  <FunnelIcon className="w-5 h-5" />
-                </div>
-                <h3 className="text-sm font-bold uppercase tracking-wide">Filter Labels</h3>
-              </div>
-              
-              {/* Search Input */}
-              <div className="mb-4">
-                <div className="relative">
-                  <MagnifyingGlassIcon className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 opacity-60" />
-                  <input
-                    type="text"
-                    value={labelSearchQuery}
-                    onChange={(e) => setLabelSearchQuery(e.target.value)}
-                    placeholder="Search labels..."
-                    className="w-full pl-8 pr-3 py-2 text-xs border-2 border-black"
-                    style={{
-                      backgroundColor: 'var(--theme-bg-light)',
-                      boxShadow: '2px 2px 0 #000'
-                    }}
-                  />
-                </div>
-              </div>
-              
-              {/* Active Labels (Green) */}
-              {activeLabels.length > 0 && (
-                <div className="mb-4">
-                  <div className="text-[10px] opacity-60 uppercase mb-2 font-bold">Active Filters</div>
-                  <div className="space-y-1">
-                    {activeLabels.map(label => (
-                      <button
-                        key={label}
-                        onClick={() => toggleLabel(label)}
-                        className="w-full px-3 py-2 border-2 border-black text-xs text-left font-bold hover:opacity-80 transition-opacity"
-                        style={{
-                          backgroundColor: '#90EE90',
-                          boxShadow: '2px 2px 0 #000'
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Inactive Labels (Red) */}
-              {inactiveLabels.length > 0 && (
-                <div>
-                  <div className="text-[10px] opacity-60 uppercase mb-2 font-bold">Available Labels</div>
-                  <div className="space-y-1">
-                    {inactiveLabels.map(label => (
-                      <button
-                        key={label}
-                        onClick={() => toggleLabel(label)}
-                        className="w-full px-3 py-2 border-2 border-black text-xs text-left hover:opacity-80 transition-opacity"
-                        style={{
-                          backgroundColor: '#FFB6B6',
-                          boxShadow: '2px 2px 0 #000'
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {filteredPublishedLabels.length === 0 && labelSearchQuery && (
-                <div className="text-xs opacity-60 text-center py-4">
-                  No labels match your search
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tile Palette - Left Sidebar */}
+      {/* Combined Left Pane - Single container that slides as one */}
       <div 
-        className="fixed top-16 bottom-0 w-64 border-r-2 border-black overflow-y-auto z-30 p-4 transition-all duration-300"
+        className="fixed top-16 bottom-0 z-30 flex transition-all duration-200 ease-in-out"
         style={{ 
-          backgroundColor: 'var(--theme-bg-panel)',
-          left: labelsMenuOpen && publishedLabels.length > 0 ? '320px' : '0px'
+          left: labelsMenuOpen && publishedLabels.length > 0 ? '0px' : publishedLabels.length > 0 ? '-304px' : '0px', // Slide entire unit, leaving 16px trigger visible
         }}
       >
+        {/* Filter Panel - Only visible if there are labels */}
+        {publishedLabels.length > 0 && (
+          <div 
+            onMouseEnter={() => setLabelsMenuOpen(true)}
+            onMouseLeave={() => setLabelsMenuOpen(false)}
+            className="w-80 border-r-2 border-black overflow-hidden"
+            style={{ 
+              backgroundColor: 'var(--theme-bg-panel)',
+            }}
+          >
+            <div className="h-full overflow-y-auto p-4">
+            {/* Trigger Icon */}
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className="p-2 border-2 border-black"
+                style={{
+                  backgroundColor: 'var(--theme-accent)',
+                  boxShadow: '2px 2px 0 #000'
+                }}
+              >
+                <FunnelIcon className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-bold uppercase tracking-wide">Filter Labels</h3>
+            </div>
+
+            {/* Search Input */}
+            <div className="mb-4">
+              <div className="relative">
+                <MagnifyingGlassIcon className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 opacity-60" />
+                <input
+                  type="text"
+                  value={labelSearchQuery}
+                  onChange={(e) => setLabelSearchQuery(e.target.value)}
+                  placeholder="Search labels..."
+                  className="w-full pl-8 pr-3 py-2 text-xs border-2 border-black"
+                  style={{
+                    backgroundColor: 'var(--theme-bg-light)',
+                    boxShadow: '2px 2px 0 #000'
+                  }}
+                />
+              </div>
+            </div>
+            
+            {/* Active Labels (Green) */}
+            {activeLabels.length > 0 && (
+              <div className="mb-4">
+                <div className="text-[10px] opacity-60 uppercase mb-2 font-bold">Active Filters</div>
+                <div className="space-y-1">
+                  {activeLabels.map(label => (
+                    <button
+                      key={label}
+                      onClick={() => toggleLabel(label)}
+                      className="w-full px-3 py-2 border-2 border-black text-xs text-left font-bold hover:opacity-80 transition-opacity"
+                      style={{
+                        backgroundColor: '#90EE90',
+                        boxShadow: '2px 2px 0 #000'
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Inactive Labels (Red) */}
+            {inactiveLabels.length > 0 && (
+              <div>
+                <div className="text-[10px] opacity-60 uppercase mb-2 font-bold">Available Labels</div>
+                <div className="space-y-1">
+                  {inactiveLabels.map(label => (
+                    <button
+                      key={label}
+                      onClick={() => toggleLabel(label)}
+                      className="w-full px-3 py-2 border-2 border-black text-xs text-left hover:opacity-80 transition-opacity"
+                      style={{
+                        backgroundColor: '#FFB6B6',
+                        boxShadow: '2px 2px 0 #000'
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {filteredPublishedLabels.length === 0 && labelSearchQuery && (
+              <div className="text-xs opacity-60 text-center py-4">
+                No labels match your search
+              </div>
+            )}
+            </div>
+          </div>
+        )}
+
+        {/* Tile Palette - Always part of the sliding unit */}
+        <div 
+          className="w-64 border-r-2 border-black overflow-y-auto p-4"
+          style={{ 
+            backgroundColor: 'var(--theme-bg-panel)',
+          }}
+        >
         <h2 className="text-lg font-bold mb-2">Tiles</h2>
         <p className="text-[10px] opacity-60 mb-2">Press F to toggle tools</p>
         
@@ -862,23 +858,24 @@ export default function MapEditor() {
               })}
           </div>
         )}
+        </div>
       </div>
 
       {/* Map Grid */}
       <div 
         ref={mapContainerRef}
-        className="flex-1 mt-16 overflow-auto relative z-0 transition-all duration-300"
+        className="flex-1 mt-16 overflow-auto relative z-0"
         style={{ 
-          marginLeft: labelsMenuOpen && publishedLabels.length > 0 ? '576px' : '256px', // 320px filter + 256px tiles OR just 256px tiles
+          marginLeft: publishedLabels.length > 0 ? '272px' : '256px', // Fixed margin: trigger(16px)+tiles(256px) OR just tiles
           backgroundColor: 'var(--theme-bg-light)',
         }}
         onMouseLeave={handleMouseLeaveGrid}
       >
         {/* Active Layer Indicator - Top Left (after sidebar) */}
         <div 
-          className="fixed top-20 z-20 px-4 py-2 border-2 border-black transition-all duration-300"
+          className="fixed top-20 z-20 px-4 py-2 border-2 border-black"
           style={{ 
-            left: labelsMenuOpen && publishedLabels.length > 0 ? '584px' : '264px', // After filter + tiles OR just tiles + padding
+            left: publishedLabels.length > 0 ? '280px' : '264px', // Fixed position: after trigger+tiles OR just tiles
             backgroundColor: 'var(--theme-bg-medium)',
             boxShadow: '4px 4px 0 #000'
           }}
