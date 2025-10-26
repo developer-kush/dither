@@ -48,7 +48,7 @@ export default function PixelArtGenerator() {
   const [floodFillMode, setFloodFillMode] = useState(false);
   const [boxMode, setBoxMode] = useState(false);
   const [brushMode, setBrushMode] = useState(false);
-  const [brushStrength, setBrushStrength] = useLocalStorage('pixelart-brushStrength', 0.3);
+  const [brushStrength, setBrushStrength] = useLocalStorage('pixelart-brushStrength', 2/12); // Default to 1/6
   const [boxStart, setBoxStart] = useState<{x: number, y: number} | null>(null);
   const [leftMenuOpen, setLeftMenuOpen] = useState(false);
   const [hexInput, setHexInput] = useState(color.toUpperCase());
@@ -76,6 +76,7 @@ export default function PixelArtGenerator() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const scrollAccumulatorRef = useRef<number>(0);
 
   const BIN_COLOR = "rgba(0,0,0,0)";
 
@@ -763,34 +764,6 @@ export default function PixelArtGenerator() {
               <GameIcon type="grid" />
             </GameButton>
           </div>
-          
-          {/* Brush Strength Slider - Only visible in brush mode */}
-          {brushMode && (
-            <div className="mt-3 p-3 border-2 border-black" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-bold">Brush Depth</label>
-                <span className="text-sm font-mono" style={{ backgroundColor: 'var(--theme-bg-medium)', padding: '2px 6px', border: '1px solid #000' }}>
-                  {Math.round(brushStrength * 100)}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min="0.05"
-                max="1"
-                step="0.05"
-                value={brushStrength}
-                onChange={(e) => setBrushStrength(parseFloat(e.target.value))}
-                className="w-full"
-                style={{
-                  accentColor: 'var(--theme-accent)',
-                }}
-              />
-              <div className="flex justify-between text-xs opacity-60 mt-1">
-                <span>Light</span>
-                <span>Heavy</span>
-              </div>
-            </div>
-          )}
         </GameSection>
 
         {/* Color Section */}
@@ -961,6 +934,64 @@ export default function PixelArtGenerator() {
 
       {/* Main Canvas Area */}
       <div className="w-full h-screen pt-16 flex items-center justify-center">
+        {/* Brush Depth Indicator - Only visible in brush mode */}
+        {brushMode && (
+          <div 
+            className="absolute top-20 left-[280px] z-10 flex flex-col items-center"
+          >
+            <div className="bg-[var(--theme-bg-medium)] border-2 border-black px-2 py-1 mb-2 text-xs font-bold" style={{ boxShadow: '2px 2px 0 #000' }}>
+              DEPTH
+            </div>
+            <div 
+              className="relative bg-[var(--theme-bg-panel)] border-2 border-black" 
+              style={{ 
+                width: '40px', 
+                height: '200px',
+                boxShadow: '2px 2px 0 #000'
+              }}
+            >
+              {/* Background gradient */}
+              <div 
+                className="absolute inset-0"
+                style={{
+                  background: 'linear-gradient(to top, var(--theme-accent), rgba(255,255,255,0.3))',
+                  opacity: 0.3
+                }}
+              />
+              
+              {/* Current level indicator */}
+              <div 
+                className="absolute left-0 right-0 border-2 border-black transition-all duration-100"
+                style={{ 
+                  bottom: `${brushStrength * 100}%`,
+                  height: '4px',
+                  backgroundColor: 'var(--theme-accent)',
+                  boxShadow: '0 0 8px var(--theme-accent)'
+                }}
+              />
+              
+              {/* Fill from bottom */}
+              <div 
+                className="absolute left-0 right-0 bottom-0 transition-all duration-100"
+                style={{ 
+                  height: `${brushStrength * 100}%`,
+                  backgroundColor: 'var(--theme-accent)',
+                  opacity: 0.6
+                }}
+              />
+            </div>
+            <div className="bg-[var(--theme-bg-medium)] border-2 border-black px-3 py-1 mt-2 text-xs font-bold" style={{ boxShadow: '2px 2px 0 #000' }}>
+              {(() => {
+                const level = Math.round(brushStrength * 12);
+                // Simplify the fraction
+                const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+                const divisor = gcd(level, 12);
+                return `${level / divisor}/${12 / divisor}`;
+              })()}
+            </div>
+          </div>
+        )}
+        
         {/* Tile Info - Top Left */}
         <div className="absolute top-20 left-8 z-10 p-3 space-y-3 min-w-[240px] bg-[var(--theme-bg-medium)] border-2 border-black" style={{ boxShadow: '4px 4px 0 #000' }}>
           <div>
@@ -1092,6 +1123,25 @@ export default function PixelArtGenerator() {
                 }
                 setMouseDown(false);
                 setHoveredPixel(null); 
+              }}
+              onWheel={(e) => {
+                if (brushMode) {
+                  e.preventDefault();
+                  // Accumulate scroll delta (respects scroll speed)
+                  scrollAccumulatorRef.current += e.deltaY;
+                  
+                  // Change level based on accumulated scroll (60 pixels = 1 level)
+                  const pixelsPerLevel = 60;
+                  const levelChange = Math.floor(Math.abs(scrollAccumulatorRef.current) / pixelsPerLevel);
+                  
+                  if (levelChange > 0) {
+                    const step = (1 / 12) * levelChange; // Can change multiple levels at once with fast scroll
+                    const delta = scrollAccumulatorRef.current > 0 ? -step : step;
+                    setBrushStrength(prev => Math.max(1/12, Math.min(1, prev + delta)));
+                    // Remove the processed scroll amount
+                    scrollAccumulatorRef.current = scrollAccumulatorRef.current % pixelsPerLevel * Math.sign(scrollAccumulatorRef.current);
+                  }
+                }
               }}
             >
               {grid.map((row, y) =>
