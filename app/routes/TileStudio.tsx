@@ -5,13 +5,17 @@ import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useRouteCycling } from "../hooks/useRouteCycling";
 import { GameButton } from "../components/GameButton";
 import { NavBar } from "../components/NavBar";
+import GameMenu from "../components/GameMenu";
+import GameSection from "../components/GameSection";
 import { 
   PlusIcon, 
   TrashIcon, 
   PlayIcon,
   PauseIcon,
   ArrowLeftIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  Squares2X2Icon,
+  XMarkIcon
 } from "@heroicons/react/24/outline";
 
 export function meta() {
@@ -21,6 +25,19 @@ export function meta() {
   ];
 }
 
+// Composite tile structure - tiles positioned relative to a pivot
+interface CompositeTile {
+  id: string;
+  name: string;
+  tiles: {
+    tileId: string;
+    offsetX: number; // Grid position relative to pivot (0,0)
+    offsetY: number; // Grid position relative to pivot (0,0)
+    isPivot: boolean; // The central/origin tile
+  }[];
+}
+
+// Legacy animation support (will be moved to a separate tool later)
 interface AnimatedTile {
   id: string;
   name: string;
@@ -34,20 +51,18 @@ export default function TileStudio() {
   // Enable route cycling with Shift+Tab
   useRouteCycling();
   
-  // Load animated tiles from localStorage
+  // Load composite tiles from localStorage
+  const [compositeTilesData, setCompositeTilesData] = useLocalStorage<CompositeTile[]>('composite-tiles', []);
+  const [compositeTiles, setCompositeTiles] = useState<CompositeTile[]>(compositeTilesData);
+  const [selectedCompositeTile, setSelectedCompositeTile] = useState<CompositeTile | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [showTileSelector, setShowTileSelector] = useState(false);
+  const [pendingPosition, setPendingPosition] = useState<{x: number, y: number} | null>(null);
+  const [tilesMenuOpen, setTilesMenuOpen] = useState(false);
+  
+  // Legacy animation tiles (kept for backward compatibility)
   const [animatedTilesData, setAnimatedTilesData] = useLocalStorage<AnimatedTile[]>('animated-tiles', []);
   const [animatedTiles, setAnimatedTiles] = useState<AnimatedTile[]>(animatedTilesData);
-  
-  const [selectedAnimatedTile, setSelectedAnimatedTile] = useState<AnimatedTile | null>(null);
-  const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [editingName, setEditingName] = useState("");
-  const [fps, setFps] = useState(8);
-  const [shouldPublish, setShouldPublish] = useState(true); // Auto-publish by default
-  
-  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
-  const animationFrameRef = useRef<number>();
-  const lastFrameTimeRef = useRef<number>(0);
 
   // Set theme
   useEffect(() => {
@@ -56,6 +71,11 @@ export default function TileStudio() {
       document.documentElement.setAttribute('data-theme', 'green');
     };
   }, []);
+
+  // Save composite tiles to localStorage
+  useEffect(() => {
+    setCompositeTilesData(compositeTiles);
+  }, [compositeTiles, setCompositeTilesData]);
 
   // Save animated tiles to localStorage
   useEffect(() => {
@@ -117,6 +137,127 @@ export default function TileStudio() {
       }
     }
   }, [selectedAnimatedTile, currentFrameIndex, getTile]);
+
+  // === COMPOSITE TILE FUNCTIONS ===
+  
+  const createNewCompositeTile = () => {
+    const newTile: CompositeTile = {
+      id: `composite_${Date.now()}`,
+      name: `Composite Tile ${compositeTiles.length + 1}`,
+      tiles: []
+    };
+    setCompositeTiles(prev => [...prev, newTile]);
+    setSelectedCompositeTile(newTile);
+    setEditingName(newTile.name);
+  };
+
+  const deleteCompositeTile = (id: string) => {
+    if (window.confirm('Delete this composite tile?')) {
+      setCompositeTiles(prev => prev.filter(t => t.id !== id));
+      if (selectedCompositeTile?.id === id) {
+        setSelectedCompositeTile(null);
+      }
+    }
+  };
+
+  const updateCompositeTileName = (id: string, name: string) => {
+    setCompositeTiles(prev => prev.map(ct => 
+      ct.id === id ? { ...ct, name } : ct
+    ));
+    if (selectedCompositeTile?.id === id) {
+      setSelectedCompositeTile(prev => prev ? { ...prev, name } : null);
+    }
+  };
+
+  const addTileToComposite = (tileId: string, offsetX: number, offsetY: number, isPivot: boolean = false) => {
+    if (!selectedCompositeTile) return;
+
+    const newTileEntry = { tileId, offsetX, offsetY, isPivot };
+    
+    setCompositeTiles(prev => prev.map(ct => 
+      ct.id === selectedCompositeTile.id 
+        ? { ...ct, tiles: [...ct.tiles, newTileEntry] }
+        : ct
+    ));
+    
+    setSelectedCompositeTile(prev => 
+      prev ? { ...prev, tiles: [...prev.tiles, newTileEntry] } : null
+    );
+  };
+
+  const removeTileFromComposite = (offsetX: number, offsetY: number) => {
+    if (!selectedCompositeTile) return;
+
+    const newTiles = selectedCompositeTile.tiles.filter(
+      t => !(t.offsetX === offsetX && t.offsetY === offsetY)
+    );
+    
+    setCompositeTiles(prev => prev.map(ct => 
+      ct.id === selectedCompositeTile.id 
+        ? { ...ct, tiles: newTiles }
+        : ct
+    ));
+    
+    setSelectedCompositeTile(prev => 
+      prev ? { ...prev, tiles: newTiles } : null
+    );
+  };
+
+  const handleAddTileClick = (x: number, y: number) => {
+    setPendingPosition({ x, y });
+    setShowTileSelector(true);
+  };
+
+  const handleTileSelected = (tileId: string) => {
+    if (pendingPosition && selectedCompositeTile) {
+      const isPivot = selectedCompositeTile.tiles.length === 0; // First tile is pivot
+      addTileToComposite(tileId, pendingPosition.x, pendingPosition.y, isPivot);
+    }
+    setShowTileSelector(false);
+    setPendingPosition(null);
+  };
+
+  // Get all occupied positions in the composite
+  const getOccupiedPositions = (): Set<string> => {
+    if (!selectedCompositeTile) return new Set();
+    return new Set(
+      selectedCompositeTile.tiles.map(t => `${t.offsetX},${t.offsetY}`)
+    );
+  };
+
+  // Get adjacent positions that should show + buttons
+  const getAdjacentPositions = (): { x: number, y: number }[] => {
+    if (!selectedCompositeTile || selectedCompositeTile.tiles.length === 0) {
+      return [{ x: 0, y: 0 }]; // Show center position if no tiles yet
+    }
+
+    const occupied = getOccupiedPositions();
+    const adjacent = new Set<string>();
+
+    selectedCompositeTile.tiles.forEach(tile => {
+      // Check all 4 adjacent positions
+      const neighbors = [
+        { x: tile.offsetX - 1, y: tile.offsetY },     // Left
+        { x: tile.offsetX + 1, y: tile.offsetY },     // Right
+        { x: tile.offsetX, y: tile.offsetY - 1 },     // Top
+        { x: tile.offsetX, y: tile.offsetY + 1 },     // Bottom
+      ];
+
+      neighbors.forEach(pos => {
+        const key = `${pos.x},${pos.y}`;
+        if (!occupied.has(key)) {
+          adjacent.add(key);
+        }
+      });
+    });
+
+    return Array.from(adjacent).map(key => {
+      const [x, y] = key.split(',').map(Number);
+      return { x, y };
+    });
+  };
+
+  // === LEGACY ANIMATED TILE FUNCTIONS ===
 
   const createNewAnimatedTile = () => {
     const newTile: AnimatedTile = {
@@ -258,303 +399,283 @@ export default function TileStudio() {
     }
   };
 
+  // Get the basic tiles (non-complex, non-animated) for the tile selector
+  const basicTiles = tiles.filter(t => !t.isComplex);
+
   return (
-    <div className="w-full h-screen flex" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
+    <div className="w-full h-screen flex flex-col" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
       <NavBar title="Tile Studio" />
 
-      {/* Left Sidebar - Animated Tiles List */}
-      <div 
-        className="fixed left-0 top-16 bottom-0 w-64 border-r-2 border-black overflow-y-auto z-30 p-4"
-        style={{ backgroundColor: 'var(--theme-bg-panel)' }}
+      {/* Left Sliding Menu - Composite Tiles Only */}
+      <GameMenu 
+        side="left" 
+        triggerIcon={<Squares2X2Icon className="w-6 h-6" />}
+        onOpenChange={setTilesMenuOpen}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">Animated Tiles</h2>
-          <GameButton icon onClick={createNewAnimatedTile} title="New Animated Tile">
+        <GameSection title="Composite Tiles">
+          {compositeTiles.length === 0 ? (
+            <div className="text-sm opacity-60 text-center py-4">
+              <p>No composite tiles yet</p>
+              <p className="text-xs mt-2">Create one below</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {compositeTiles.map(ct => (
+                <div
+                  key={ct.id}
+                  className={`border-2 border-black p-3 cursor-pointer transition-all ${
+                    selectedCompositeTile?.id === ct.id ? 'ring-4 ring-blue-500' : ''
+                  }`}
+                  style={{ 
+                    backgroundColor: 'var(--theme-bg-light)',
+                    boxShadow: '2px 2px 0 #000'
+                  }}
+                  onClick={() => {
+                    setSelectedCompositeTile(ct);
+                    setEditingName(ct.name);
+                  }}
+                >
+                  <div className="font-bold text-sm mb-1">{ct.name}</div>
+                  <div className="text-xs opacity-70">{ct.tiles.length} tiles</div>
+                  <GameButton
+                    icon
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteCompositeTile(ct.id);
+                    }}
+                    style={{ padding: '4px', marginTop: '8px' }}
+                    title="Delete"
+                  >
+                    <TrashIcon className="w-3 h-3" />
+                  </GameButton>
+                </div>
+              ))}
+            </div>
+          )}
+        </GameSection>
+      </GameMenu>
+
+      {/* Main Content */}
+      <div className="flex-1 mt-16 flex flex-col overflow-hidden">
+        {/* Top Bar - Project Selection */}
+        <div className="px-8 py-4 border-b-2 border-black flex items-center gap-4" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
+          <label className="font-bold">Composite Tile:</label>
+          <select
+            value={selectedCompositeTile?.id || ''}
+            onChange={(e) => {
+              const ct = compositeTiles.find(t => t.id === e.target.value);
+              setSelectedCompositeTile(ct || null);
+              if (ct) setEditingName(ct.name);
+            }}
+            className="flex-1 max-w-md p-2 border-2 border-black"
+            style={{ backgroundColor: 'var(--theme-bg-light)' }}
+          >
+            <option value="">Select a composite tile...</option>
+            {compositeTiles.map(ct => (
+              <option key={ct.id} value={ct.id}>{ct.name}</option>
+            ))}
+          </select>
+          <GameButton onClick={createNewCompositeTile}>
             <PlusIcon className="w-5 h-5" />
+            <span className="ml-2">New Composite Tile</span>
           </GameButton>
         </div>
 
-        {animatedTiles.length === 0 ? (
-          <div className="text-sm opacity-60 text-center">
-            <p>No animated tiles yet</p>
-            <p className="text-xs mt-2">Click + to create one</p>
+        {!selectedCompositeTile ? (
+          <div className="flex-1 flex items-center justify-center text-center">
+            <div>
+              <div className="text-2xl opacity-60 mb-4">Create or select a composite tile to begin</div>
+              <p className="text-sm opacity-50 max-w-md mx-auto">
+                Composite tiles let you combine multiple tiles into larger structures. 
+                Click the "+" buttons around tiles to build your composite.
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            {animatedTiles.map(at => (
-              <div
-                key={at.id}
-                className={`border-2 border-black p-2 cursor-pointer ${
-                  selectedAnimatedTile?.id === at.id ? 'ring-4 ring-blue-500' : ''
-                }`}
-                style={{ 
-                  backgroundColor: 'var(--theme-bg-medium)',
-                  boxShadow: '2px 2px 0 #000'
-                }}
-                onClick={() => {
-                  setSelectedAnimatedTile(at);
-                  setEditingName(at.name);
-                  setFps(at.fps);
-                  setCurrentFrameIndex(0);
-                  setIsPlaying(false);
-                }}
-              >
-                <div className="font-bold text-sm">{at.name}</div>
-                <div className="text-xs opacity-70">{at.frames.length} frames @ {at.fps} fps</div>
-                <GameButton
-                  icon
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteAnimatedTile(at.id);
-                  }}
-                  style={{ padding: '4px', marginTop: '8px' }}
-                  title="Delete"
-                >
-                  <TrashIcon className="w-3 h-3" />
-                </GameButton>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 ml-64 mt-16 p-8 overflow-auto">
-        {!selectedAnimatedTile ? (
-          <div className="text-center text-2xl opacity-60 mt-20">
-            Select or create an animated tile to begin
-          </div>
-        ) : (
-          <div className="max-w-6xl mx-auto">
-            {/* Tile Info */}
-            <div className="mb-6 p-4 border-2 border-black" style={{ backgroundColor: 'var(--theme-bg-medium)', boxShadow: '4px 4px 0 #000' }}>
-              <div className="flex items-center gap-4 mb-4">
+          <div className="flex-1 flex flex-col p-6 overflow-auto">
+            {/* Name Editor */}
+            <div className="mb-6 p-4 border-2 border-black" style={{ backgroundColor: 'var(--theme-bg-panel)', boxShadow: '4px 4px 0 #000' }}>
+              <div className="flex items-center gap-4">
                 <label className="font-bold">Name:</label>
                 <input
                   type="text"
                   value={editingName}
                   onChange={(e) => setEditingName(e.target.value)}
-                  onBlur={updateName}
+                  onBlur={() => updateCompositeTileName(selectedCompositeTile.id, editingName)}
                   className="flex-1 p-2 border-2 border-black"
-                  style={{ backgroundColor: 'var(--theme-bg-panel)' }}
+                  style={{ backgroundColor: 'var(--theme-bg-light)' }}
                 />
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <label className="font-bold">FPS:</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="60"
-                  value={fps}
-                  onChange={(e) => updateFps(parseInt(e.target.value) || 8)}
-                  className="w-20 p-2 border-2 border-black"
-                  style={{ backgroundColor: 'var(--theme-bg-panel)' }}
-                />
-                <div className="text-sm opacity-70">
-                  Duration: {((selectedAnimatedTile.frames.length / fps) * 1000).toFixed(0)}ms per loop
-                </div>
               </div>
             </div>
 
-            {/* Preview and Controls */}
-            <div className="mb-6 p-4 border-2 border-black" style={{ backgroundColor: 'var(--theme-bg-medium)', boxShadow: '4px 4px 0 #000' }}>
-              <div className="font-bold mb-4 text-lg">Preview</div>
-              
-              {selectedAnimatedTile.frames.length === 0 ? (
-                <div className="text-center p-8 opacity-60">Add frames to see preview</div>
-              ) : (
-                <div className="flex items-center gap-4">
-                  <canvas
-                    ref={previewCanvasRef}
-                    className="border-2 border-black"
-                    style={{ 
-                      imageRendering: 'pixelated',
-                      width: '128px',
-                      height: '128px'
-                    }}
-                  />
-                  
-                  <div className="flex flex-col gap-2">
-                    <GameButton onClick={() => setIsPlaying(!isPlaying)}>
-                      {isPlaying ? <PauseIcon className="w-5 h-5" /> : <PlayIcon className="w-5 h-5" />}
-                      <span className="ml-2">{isPlaying ? 'Pause' : 'Play'}</span>
-                    </GameButton>
-                    
-                    {/* Publish Settings */}
-                    <div className="p-3 border-2 border-black bg-[var(--theme-bg-panel)]" style={{ boxShadow: '2px 2px 0 #000' }}>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={shouldPublish}
-                          onChange={(e) => setShouldPublish(e.target.checked)}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-xs font-bold">Publish to Map Editor</span>
-                      </label>
-                    </div>
-                    
-                    <GameButton 
-                      onClick={saveComplexTile}
-                      style={{ 
-                        backgroundColor: '#FFD700',
-                        borderColor: '#000',
-                        fontWeight: 'bold'
-                      }}
-                    >
-                      Save {shouldPublish ? '& Publish' : 'to Tiles'}
-                    </GameButton>
-                    
-                    <div className="text-sm">
-                      Frame {currentFrameIndex + 1} of {selectedAnimatedTile.frames.length}
-                    </div>
-                  </div>
+            {/* Canvas Grid - Show tiles and + buttons */}
+            <div className="flex-1 p-8 border-2 border-black" style={{ backgroundColor: 'var(--theme-bg-medium)', boxShadow: '4px 4px 0 #000' }}>
+              <div className="font-bold mb-6 text-lg flex items-center justify-between">
+                <span>Canvas</span>
+                <div className="text-sm opacity-70 font-normal">
+                  {selectedCompositeTile.tiles.length === 0 
+                    ? 'Click + to add your first tile' 
+                    : `${selectedCompositeTile.tiles.length} tile(s)`}
                 </div>
-              )}
-            </div>
-
-            {/* Frames Timeline */}
-            <div className="mb-6 p-4 border-2 border-black" style={{ backgroundColor: 'var(--theme-bg-medium)', boxShadow: '4px 4px 0 #000' }}>
-              <div className="font-bold mb-4 text-lg">Animation Frames</div>
+              </div>
               
-              {selectedAnimatedTile.frames.length === 0 ? (
-                <div className="text-center p-4 opacity-60">No frames added yet. Select tiles below to add them.</div>
+              {selectedCompositeTile.tiles.length === 0 && getAdjacentPositions().length === 0 ? (
+                <div className="text-center p-8 opacity-60">Error: No positions available</div>
               ) : (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {selectedAnimatedTile.frames.map((frameId, index) => {
-                    const tile = getTile(frameId);
-                    if (!tile) return null;
+                <div className="flex items-center justify-center">
+                  {/* Grid Container - Dynamically sized based on tile positions */}
+                  <div className="inline-grid gap-0" style={{ 
+                    gridTemplateColumns: 'repeat(auto-fit, 128px)',
+                    gridAutoRows: '128px'
+                  }}>
+                    {/* Render existing tiles */}
+                    {selectedCompositeTile.tiles.map(tileEntry => {
+                      const tile = getTile(tileEntry.tileId);
+                      if (!tile) return null;
 
-                    return (
-                      <div 
-                        key={`${frameId}-${index}`}
-                        className="flex-shrink-0 border-2 border-black p-2 relative"
-                        style={{ 
-                          backgroundColor: 'var(--theme-bg-panel)',
-                          boxShadow: index === currentFrameIndex ? '0 0 0 3px blue' : '2px 2px 0 #000'
-                        }}
-                      >
-                        <canvas
-                          ref={(canvas) => {
-                            if (!canvas) return;
-                            const ctx = canvas.getContext('2d');
-                            if (!ctx) return;
-
-                            canvas.width = tile.size;
-                            canvas.height = tile.size;
-
-                            for (let y = 0; y < tile.size; y++) {
-                              for (let x = 0; x < tile.size; x++) {
-                                const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
-                                ctx.fillStyle = color;
-                                ctx.fillRect(x, y, 1, 1);
-                              }
-                            }
-                          }}
+                      return (
+                        <div
+                          key={`${tileEntry.offsetX},${tileEntry.offsetY}`}
+                          className="relative border-2 border-black"
                           style={{ 
-                            imageRendering: 'pixelated',
-                            width: '64px',
-                            height: '64px'
+                            gridColumn: `${tileEntry.offsetX + 10} / span 1`,
+                            gridRow: `${tileEntry.offsetY + 10} / span 1`,
+                            backgroundColor: 'var(--theme-bg-panel)',
                           }}
-                        />
-                        
-                        <div className="text-xs text-center mt-1">Frame {index + 1}</div>
-                        
-                        <div className="flex gap-1 mt-2">
-                          {index > 0 && (
-                            <GameButton
-                              icon
-                              onClick={() => moveFrame(index, index - 1)}
-                              style={{ padding: '2px' }}
-                              title="Move Left"
+                        >
+                          <canvas
+                            ref={(canvas) => {
+                              if (!canvas) return;
+                              const ctx = canvas.getContext('2d');
+                              if (!ctx) return;
+
+                              canvas.width = tile.size;
+                              canvas.height = tile.size;
+
+                              for (let y = 0; y < tile.size; y++) {
+                                for (let x = 0; x < tile.size; x++) {
+                                  const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
+                                  ctx.fillStyle = color;
+                                  ctx.fillRect(x, y, 1, 1);
+                                }
+                              }
+                            }}
+                            className="w-full h-full"
+                            style={{ imageRendering: 'pixelated' }}
+                          />
+                          {tileEntry.isPivot && (
+                            <div 
+                              className="absolute top-1 right-1 bg-yellow-400 text-black text-xs px-1 rounded border border-black"
+                              title="Pivot tile - origin point for placement"
                             >
-                              <ArrowLeftIcon className="w-3 h-3" />
-                            </GameButton>
+                              PIVOT
+                            </div>
                           )}
-                          
-                          {index < selectedAnimatedTile.frames.length - 1 && (
-                            <GameButton
-                              icon
-                              onClick={() => moveFrame(index, index + 1)}
-                              style={{ padding: '2px' }}
-                              title="Move Right"
-                            >
-                              <ArrowRightIcon className="w-3 h-3" />
-                            </GameButton>
-                          )}
-                          
                           <GameButton
                             icon
-                            onClick={() => removeFrame(index)}
-                            style={{ padding: '2px' }}
-                            title="Remove Frame"
+                            onClick={() => removeTileFromComposite(tileEntry.offsetX, tileEntry.offsetY)}
+                            className="absolute bottom-1 right-1"
+                            style={{ padding: '4px' }}
+                            title="Remove tile"
                           >
-                            <TrashIcon className="w-3 h-3" />
+                            <XMarkIcon className="w-3 h-3" />
                           </GameButton>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                      );
+                    })}
 
-            {/* Available Tiles */}
-            <div className="p-4 border-2 border-black" style={{ backgroundColor: 'var(--theme-bg-medium)', boxShadow: '4px 4px 0 #000' }}>
-              <div className="font-bold mb-4 text-lg">Available Tiles</div>
-              
-              {tiles.length === 0 ? (
-                <div className="text-center p-4 opacity-60">
-                  <p>No tiles available</p>
-                  <Link to="/tile-editor" className="underline">Create tiles first</Link>
-                </div>
-              ) : (
-                <div className="grid grid-cols-6 gap-2">
-                  {tiles.map(tile => {
-                    return (
+                    {/* Render + buttons for adjacent empty positions */}
+                    {getAdjacentPositions().map(pos => (
                       <div
-                        key={tile.id}
-                        className="border-2 border-black cursor-pointer p-2 transition-all hover:scale-105"
+                        key={`add-${pos.x},${pos.y}`}
+                        className="border-2 border-dashed border-black flex items-center justify-center cursor-pointer hover:bg-[var(--theme-bg-panel)] transition-colors"
                         style={{ 
-                          backgroundColor: 'var(--theme-bg-panel)',
-                          boxShadow: '2px 2px 0 #000'
+                          gridColumn: `${pos.x + 10} / span 1`,
+                          gridRow: `${pos.y + 10} / span 1`,
+                          backgroundColor: 'transparent'
                         }}
-                        onClick={() => addFrameToAnimation(tile.id)}
-                        title={`Add ${tile.name} to animation`}
+                        onClick={() => handleAddTileClick(pos.x, pos.y)}
+                        title="Add tile here"
                       >
-                        <canvas
-                          ref={(canvas) => {
-                            if (!canvas) return;
-                            const ctx = canvas.getContext('2d');
-                            if (!ctx) return;
-
-                            canvas.width = tile.size;
-                            canvas.height = tile.size;
-
-                            for (let y = 0; y < tile.size; y++) {
-                              for (let x = 0; x < tile.size; x++) {
-                                const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
-                                ctx.fillStyle = color;
-                                ctx.fillRect(x, y, 1, 1);
-                              }
-                            }
-                          }}
-                          style={{ 
-                            imageRendering: 'pixelated',
-                            width: '100%',
-                            height: 'auto'
-                          }}
-                        />
-                        <div className="text-xs mt-1 truncate text-center">{tile.name}</div>
+                        <PlusIcon className="w-12 h-12 opacity-50" />
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
           </div>
         )}
       </div>
+
+      {/* Tile Selector Modal */}
+      {showTileSelector && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div 
+            className="border-4 border-black p-6 max-w-4xl max-h-[80vh] overflow-auto"
+            style={{ backgroundColor: 'var(--theme-bg-light)', boxShadow: '8px 8px 0 #000' }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">Select a Tile</h2>
+              <GameButton
+                icon
+                onClick={() => {
+                  setShowTileSelector(false);
+                  setPendingPosition(null);
+                }}
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </GameButton>
+            </div>
+
+            {basicTiles.length === 0 ? (
+              <div className="text-center p-8 opacity-60">
+                <p>No basic tiles available</p>
+                <Link to="/tile-editor" className="underline">Create tiles first in Tile Editor</Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-6 gap-4">
+                {basicTiles.map(tile => (
+                  <div
+                    key={tile.id}
+                    className="border-2 border-black cursor-pointer p-3 transition-all hover:scale-105"
+                    style={{ 
+                      backgroundColor: 'var(--theme-bg-panel)',
+                      boxShadow: '2px 2px 0 #000'
+                    }}
+                    onClick={() => handleTileSelected(tile.id)}
+                  >
+                    <canvas
+                      ref={(canvas) => {
+                        if (!canvas) return;
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) return;
+
+                        canvas.width = tile.size;
+                        canvas.height = tile.size;
+
+                        for (let y = 0; y < tile.size; y++) {
+                          for (let x = 0; x < tile.size; x++) {
+                            const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
+                            ctx.fillStyle = color;
+                            ctx.fillRect(x, y, 1, 1);
+                          }
+                        }
+                      }}
+                      style={{ 
+                        imageRendering: 'pixelated',
+                        width: '100%',
+                        height: 'auto'
+                      }}
+                    />
+                    <div className="text-xs mt-2 text-center font-bold truncate">{tile.name}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
