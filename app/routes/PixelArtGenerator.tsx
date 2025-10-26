@@ -5,6 +5,7 @@ import { Board } from "./Board";
 import { KeyboardTrigger } from "../utils/KeyboardTrigger";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { usePersistentBoard } from "../hooks/usePersistentBoard";
+import { useRouteCycling } from "../hooks/useRouteCycling";
 import { GameMenu } from "../components/GameMenu";
 import { GameSection } from "../components/GameSection";
 import { GameButton } from "../components/GameButton";
@@ -26,6 +27,10 @@ export function meta() {
 
 export default function PixelArtGenerator() {
   const { tileId } = useParams();
+  
+  // Enable route cycling with Shift+Tab
+  useRouteCycling();
+  
   // Persistent storage for main state
   const [gridSize, setGridSize] = useLocalStorage('pixelart-gridSize', 16);
   const [board, setBoard] = usePersistentBoard('pixelart-board', gridSize);
@@ -71,8 +76,9 @@ export default function PixelArtGenerator() {
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
   
   // Tile management
-  const { tiles, folders, saveTile, deleteTile, renameTile, getTile, createFolder, renameFolder, deleteFolder } = useTiles();
+  const { tiles, folders, saveTile, deleteTile, renameTile, getTile, createFolder, renameFolder, deleteFolder, publishTile, unpublishTile } = useTiles();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [publishFolderId, setPublishFolderId] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -531,6 +537,28 @@ export default function PixelArtGenerator() {
       showToast(`Tile "${currentTileName.trim()}" saved successfully!`, 'success');
     } else {
       showToast(`Tile "${currentTileName}" updated!`, 'success');
+    }
+  }
+
+  // Publish/unpublish current tile
+  function handleTogglePublish() {
+    if (!currentTileId) {
+      showToast('No tile to publish', 'error');
+      return;
+    }
+    
+    const currentTile = tiles.find(t => t.id === currentTileId);
+    if (!currentTile) {
+      showToast('Please save the tile first', 'error');
+      return;
+    }
+    
+    if (currentTile.isPublished) {
+      unpublishTile(currentTileId);
+      showToast(`Tile "${currentTileName}" unpublished from map editor`, 'info');
+    } else {
+      publishTile(currentTileId, publishFolderId);
+      showToast(`Tile "${currentTileName}" published to map editor!`, 'success');
     }
   }
 
@@ -1083,6 +1111,40 @@ export default function PixelArtGenerator() {
               <div className="flex items-center justify-center gap-1">
                 <GameIcon type="reset" />
                 New
+              </div>
+            </button>
+          </div>
+          
+          {/* Publish Section */}
+          <div className="pt-2 border-t border-black/20">
+            <div className="text-[10px] opacity-60 uppercase tracking-wide mb-2">Publish to Map Editor</div>
+            
+            <select
+              value={publishFolderId || ''}
+              onChange={(e) => setPublishFolderId(e.target.value || null)}
+              className="w-full px-2 py-1 text-xs border-2 border-black bg-[var(--theme-bg-panel)] mb-2"
+              style={{ boxShadow: '2px 2px 0 #000' }}
+            >
+              <option value="">Root Folder</option>
+              {folders.map(folder => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.name}
+                </option>
+              ))}
+            </select>
+            
+            <button
+              onClick={handleTogglePublish}
+              className={`w-full px-3 py-1 text-xs border-2 border-black transition-colors ${
+                tiles.find(t => t.id === currentTileId)?.isPublished
+                  ? 'bg-green-200 hover:bg-red-200'
+                  : 'bg-[var(--theme-bg-light)] hover:bg-green-200'
+              }`}
+              style={{ boxShadow: '2px 2px 0 #000' }}
+              title={tiles.find(t => t.id === currentTileId)?.isPublished ? 'Unpublish' : 'Publish'}
+            >
+              <div className="flex items-center justify-center gap-1 font-bold">
+                {tiles.find(t => t.id === currentTileId)?.isPublished ? '✓ Published' : 'Publish'}
               </div>
             </button>
           </div>

@@ -11,6 +11,8 @@ export interface Tile {
   isComplex?: boolean; // True for animated/complex tiles
   animationFrames?: string[]; // Array of tile IDs for animation
   animationFps?: number; // Animation speed
+  isPublished?: boolean; // True if published to map editor
+  publishedFolderId?: string | null; // Folder for published tiles in map editor
 }
 
 export interface Folder {
@@ -190,6 +192,22 @@ export function useTiles() {
     ));
   };
 
+  const publishTile = (id: string, publishedFolderId: string | null = null) => {
+    setTiles(prev => prev.map(tile =>
+      tile.id === id
+        ? { ...tile, isPublished: true, publishedFolderId, updatedAt: Date.now() }
+        : tile
+    ));
+  };
+
+  const unpublishTile = (id: string) => {
+    setTiles(prev => prev.map(tile =>
+      tile.id === id
+        ? { ...tile, isPublished: false, publishedFolderId: null, updatedAt: Date.now() }
+        : tile
+    ));
+  };
+
   const getTile = (id: string) => {
     return tiles.find(tile => tile.id === id);
   };
@@ -204,6 +222,8 @@ export function useTiles() {
     saveTile,
     deleteTile,
     renameTile,
+    publishTile,
+    unpublishTile,
     getTile,
     createFolder,
     renameFolder,

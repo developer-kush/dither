@@ -5,4 +5,5 @@ export default [
   route("tile-editor", "routes/PixelArtGenerator.tsx"),
   route("map-editor", "routes/MapEditor.tsx"),
   route("tile-studio", "routes/TileStudio.tsx"),
+  route("tiles", "routes/tiles.tsx"),
 ] satisfies RouteConfig;

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "react-router";
 import { useTiles } from "../hooks/useTiles";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import { useRouteCycling } from "../hooks/useRouteCycling";
 import { GameButton } from "../components/GameButton";
 import { GameIcon } from "../components/GameIcon";
 import { NavBar } from "../components/NavBar";
@@ -116,7 +117,21 @@ const GRID_SIZE = 100; // Number of cells in each direction
 type Tool = 'pen' | 'eraser';
 
 export default function MapEditor() {
-  const { tiles, getTile } = useTiles();
+  const { tiles: allTiles, getTile, folders } = useTiles();
+  
+  // Enable route cycling with Shift+Tab
+  useRouteCycling();
+  
+  // Only show published tiles in map editor
+  const tiles = allTiles.filter(tile => tile.isPublished);
+  
+  // Folder selection
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  
+  // Filter tiles by selected folder
+  const filteredTiles = selectedFolderId 
+    ? tiles.filter(tile => tile.publishedFolderId === selectedFolderId)
+    : tiles.filter(tile => !tile.publishedFolderId); // Root level tiles
   
   // Load layers from localStorage
   const [layersData, setLayersData] = useLocalStorage<any[]>('map-editor-layers', []);
@@ -156,6 +171,7 @@ export default function MapEditor() {
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
   const [dragOverBin, setDragOverBin] = useState(false);
+  const [hoveredCell, setHoveredCell] = useState<{x: number, y: number} | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const layersMenuRef = useRef<HTMLDivElement>(null);
   
@@ -207,13 +223,38 @@ export default function MapEditor() {
         setCurrentTool(prev => prev === 'pen' ? 'eraser' : 'pen');
         return;
       }
+      
+      // Pick tile with C key
+      if (key === 'c') {
+        e.preventDefault();
+        if (hoveredCell) {
+          const cellKey = `${hoveredCell.x},${hoveredCell.y}`;
+          // Check each visible layer from top to bottom for a tile at this position
+          for (let i = layers.length - 1; i >= 0; i--) {
+            const layer = layers[i];
+            if (layer.visible && layer.mapData.has(cellKey)) {
+              const cellData = layer.mapData.get(cellKey);
+              if (cellData) {
+                setSelectedTileId(cellData.tileId);
+                setActiveTransform(cellData.transform);
+                // Switch to pen tool when picking a tile
+                if (currentTool === 'eraser') {
+                  setCurrentTool('pen');
+                }
+                break;
+              }
+            }
+          }
+        }
+        return;
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [hoveredCell, layers, currentTool]);
 
   // Save layers to localStorage whenever they change
   useEffect(() => {
@@ -341,6 +382,7 @@ export default function MapEditor() {
   };
 
   const handleMouseEnter = (x: number, y: number) => {
+    setHoveredCell({ x, y });
     if (mouseDown) {
       handleCellClick(x, y);
     }
@@ -348,6 +390,11 @@ export default function MapEditor() {
 
   const handleMouseUp = () => {
     setMouseDown(false);
+  };
+
+  const handleMouseLeaveGrid = () => {
+    setMouseDown(false);
+    setHoveredCell(null);
   };
 
   // Layer management functions
@@ -607,22 +654,65 @@ export default function MapEditor() {
         </div>
       </div>
 
+      {/* Folder Browser - Far Left */}
+      <div 
+        className="fixed left-0 top-16 bottom-0 w-20 border-r-2 border-black overflow-y-auto z-30 p-2"
+        style={{ backgroundColor: 'var(--theme-bg-medium)' }}
+      >
+        <h3 className="text-[10px] font-bold mb-2 text-center opacity-60">FOLDERS</h3>
+        
+        {/* Root folder */}
+        <button
+          onClick={() => setSelectedFolderId(null)}
+          className={`w-full mb-2 p-2 border-2 border-black transition-all ${
+            selectedFolderId === null ? 'ring-2 ring-blue-500' : ''
+          }`}
+          style={{ 
+            backgroundColor: selectedFolderId === null ? 'var(--theme-accent)' : 'var(--theme-bg-panel)',
+            boxShadow: '2px 2px 0 #000'
+          }}
+          title="Root Folder"
+        >
+          <div className="text-2xl">📁</div>
+          <div className="text-[8px] mt-1 font-bold">Root</div>
+        </button>
+        
+        {/* Other folders */}
+        {folders.map(folder => (
+          <button
+            key={folder.id}
+            onClick={() => setSelectedFolderId(folder.id)}
+            className={`w-full mb-2 p-2 border-2 border-black transition-all ${
+              selectedFolderId === folder.id ? 'ring-2 ring-blue-500' : ''
+            }`}
+            style={{ 
+              backgroundColor: selectedFolderId === folder.id ? 'var(--theme-accent)' : 'var(--theme-bg-panel)',
+              boxShadow: '2px 2px 0 #000'
+            }}
+            title={folder.name}
+          >
+            <div className="text-2xl">📁</div>
+            <div className="text-[8px] mt-1 font-bold truncate">{folder.name}</div>
+          </button>
+        ))}
+      </div>
+
       {/* Tile Palette - Left Sidebar */}
       <div 
-        className="fixed left-0 top-16 bottom-0 w-64 border-r-2 border-black overflow-y-auto z-30 p-4"
+        className="fixed left-20 top-16 bottom-0 w-64 border-r-2 border-black overflow-y-auto z-30 p-4"
         style={{ backgroundColor: 'var(--theme-bg-panel)' }}
       >
         <h2 className="text-lg font-bold mb-2">Tiles</h2>
         <p className="text-[10px] opacity-60 mb-4">Press F to toggle tools</p>
         
-        {tiles.length === 0 ? (
+        {filteredTiles.length === 0 ? (
           <div className="text-sm opacity-60 text-center">
-            <p>No tiles yet</p>
-            <Link to="/tile-editor" className="underline">Create some tiles</Link>
+            <p>No published tiles{selectedFolderId ? ' in this folder' : ''}</p>
+            <Link to="/tile-editor" className="underline">Create & publish tiles</Link>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            {[...tiles]
+            {[...filteredTiles]
               .sort((a, b) => {
                 // Complex tiles first
                 if (a.isComplex && !b.isComplex) return -1;
@@ -674,12 +764,28 @@ export default function MapEditor() {
       {/* Map Grid */}
       <div 
         ref={mapContainerRef}
-        className="flex-1 ml-64 mt-16 overflow-auto relative z-0"
+        className="flex-1 mt-16 overflow-auto relative z-0"
         style={{ 
+          marginLeft: '336px', // 80px folder browser + 256px tiles
           backgroundColor: 'var(--theme-bg-light)',
         }}
-        onMouseLeave={handleMouseUp}
+        onMouseLeave={handleMouseLeaveGrid}
       >
+        {/* Active Layer Indicator - Top Left (after sidebar) */}
+        <div 
+          className="fixed top-20 z-20 px-4 py-2 border-2 border-black"
+          style={{ 
+            left: '344px', // After folder browser (80px) + tiles (256px) + padding
+            backgroundColor: 'var(--theme-bg-medium)',
+            boxShadow: '4px 4px 0 #000'
+          }}
+        >
+          <div className="text-[10px] opacity-60 uppercase tracking-wide mb-1">Active Layer</div>
+          <div className="text-sm font-bold">
+            {layers.find(l => l.id === activeLayerId)?.name || 'No Layer'}
+          </div>
+        </div>
+
         {/* Active Tile Display & Modifiers - Top Right */}
         {selectedTileId && (
           <div 

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
 import { useTiles } from "../hooks/useTiles";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import { useRouteCycling } from "../hooks/useRouteCycling";
 import { GameButton } from "../components/GameButton";
 import { NavBar } from "../components/NavBar";
 import { 
@@ -28,7 +29,10 @@ interface AnimatedTile {
 }
 
 export default function TileStudio() {
-  const { tiles, getTile, saveTile } = useTiles();
+  const { tiles, getTile, saveTile, folders, publishTile, unpublishTile } = useTiles();
+  
+  // Enable route cycling with Shift+Tab
+  useRouteCycling();
   
   // Load animated tiles from localStorage
   const [animatedTilesData, setAnimatedTilesData] = useLocalStorage<AnimatedTile[]>('animated-tiles', []);
@@ -39,6 +43,8 @@ export default function TileStudio() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [editingName, setEditingName] = useState("");
   const [fps, setFps] = useState(8);
+  const [publishFolderId, setPublishFolderId] = useState<string | null>(null);
+  const [shouldPublish, setShouldPublish] = useState(true); // Auto-publish by default
   
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
@@ -244,7 +250,13 @@ export default function TileStudio() {
       selectedAnimatedTile.fps // animationFps
     );
 
-    alert(`Complex tile "${selectedAnimatedTile.name}" saved successfully! It will appear in the map editor with a golden border.`);
+    // Auto-publish if enabled
+    if (shouldPublish) {
+      publishTile(tileId, publishFolderId);
+      alert(`Complex tile "${selectedAnimatedTile.name}" saved and published to map editor!`);
+    } else {
+      alert(`Complex tile "${selectedAnimatedTile.name}" saved! You can publish it from the tile editor.`);
+    }
   };
 
   return (
@@ -370,6 +382,35 @@ export default function TileStudio() {
                       <span className="ml-2">{isPlaying ? 'Pause' : 'Play'}</span>
                     </GameButton>
                     
+                    {/* Publish Settings */}
+                    <div className="p-3 border-2 border-black bg-[var(--theme-bg-panel)]" style={{ boxShadow: '2px 2px 0 #000' }}>
+                      <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={shouldPublish}
+                          onChange={(e) => setShouldPublish(e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-xs font-bold">Publish to Map Editor</span>
+                      </label>
+                      
+                      {shouldPublish && (
+                        <select
+                          value={publishFolderId || ''}
+                          onChange={(e) => setPublishFolderId(e.target.value || null)}
+                          className="w-full px-2 py-1 text-xs border-2 border-black bg-white"
+                          style={{ boxShadow: '1px 1px 0 #000' }}
+                        >
+                          <option value="">Root Folder</option>
+                          {folders.map(folder => (
+                            <option key={folder.id} value={folder.id}>
+                              {folder.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                    
                     <GameButton 
                       onClick={saveComplexTile}
                       style={{ 
@@ -378,7 +419,7 @@ export default function TileStudio() {
                         fontWeight: 'bold'
                       }}
                     >
-                      💾 Save to Tiles
+                      💾 Save {shouldPublish ? '& Publish' : 'to Tiles'}
                     </GameButton>
                     
                     <div className="text-sm">
