@@ -2,7 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { useTiles } from '../hooks/useTiles';
 import { useRouteCycling } from '../hooks/useRouteCycling';
 import { NavBar } from '../components/NavBar';
-import { TrashIcon, MagnifyingGlassIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { GameMenu } from '../components/GameMenu';
+import { GameSection } from '../components/GameSection';
+import { GameIcon } from '../components/GameIcon';
+import { TrashIcon, MagnifyingGlassIcon, XMarkIcon, PlusIcon, FunnelIcon } from '@heroicons/react/24/outline';
 
 export default function TilesPage() {
   const { tiles, deleteTile, renameTile, publishTile, unpublishTile, getAllLabels, addLabelToTile, removeLabelFromTile } = useTiles();
@@ -121,10 +124,92 @@ export default function TilesPage() {
     <div className="w-full h-screen flex flex-col" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
       <NavBar title="Tiles Manager" />
 
+      {/* Left Filter Menu */}
+      <GameMenu side="left" triggerIcon={<FunnelIcon className="w-6 h-6" />}>
+        <GameSection title="Filter by Labels">
+          {allLabels.length === 0 ? (
+            <div className="text-sm opacity-60 p-4 text-center">
+              No labels yet. Add labels to tiles to filter them.
+            </div>
+          ) : (
+            <>
+              {/* Selected Filter Labels */}
+              {filterLabels.length > 0 && (
+                <div className="mb-4">
+                  <div className="text-[10px] opacity-60 uppercase tracking-wide mb-2">Active Filters</div>
+                  <div className="flex flex-wrap gap-2">
+                    {filterLabels.map(label => (
+                      <div
+                        key={label}
+                        className="inline-flex items-center gap-1 px-3 py-2 border-2 border-black text-sm font-bold"
+                        style={{ 
+                          backgroundColor: 'var(--theme-accent)',
+                          boxShadow: '2px 2px 0 #000'
+                        }}
+                      >
+                        <span>{label}</span>
+                        <button
+                          onClick={() => setFilterLabels(prev => prev.filter(l => l !== label))}
+                          className="hover:text-red-600"
+                          title="Remove filter"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setFilterLabels([])}
+                    className="mt-2 w-full px-3 py-2 border-2 border-black text-sm font-bold hover:bg-red-200"
+                    style={{ 
+                      backgroundColor: 'var(--theme-bg-light)',
+                      boxShadow: '2px 2px 0 #000'
+                    }}
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
+              )}
+              
+              {/* Available Labels */}
+              <div>
+                <div className="text-[10px] opacity-60 uppercase tracking-wide mb-2">
+                  {filterLabels.length > 0 ? 'Add More Filters' : 'Select Labels'}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {allLabels
+                    .filter(label => !filterLabels.includes(label))
+                    .map(label => (
+                      <button
+                        key={label}
+                        onClick={() => setFilterLabels(prev => [...prev, label])}
+                        className="px-3 py-2 border-2 border-black text-sm hover:bg-[var(--theme-accent)] transition-colors"
+                        style={{ 
+                          backgroundColor: 'var(--theme-bg-panel)',
+                          boxShadow: '2px 2px 0 #000'
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                </div>
+              </div>
+
+              {/* Results Count */}
+              {filterLabels.length > 0 && (
+                <div className="mt-4 p-3 border-2 border-black text-sm text-center font-bold" style={{ backgroundColor: 'var(--theme-bg-medium)', boxShadow: '2px 2px 0 #000' }}>
+                  Found {filteredTiles.length} tile{filteredTiles.length !== 1 ? 's' : ''}
+                </div>
+              )}
+            </>
+          )}
+        </GameSection>
+      </GameMenu>
+
       <div className="flex-1 flex mt-16 overflow-hidden">
         {/* Left Side - Tiles Grid (3/4 width) */}
         <div className="flex-1 overflow-y-auto relative">
-          {/* Fixed Search Bar and Filters */}
+          {/* Fixed Search Bar */}
           <div className="sticky top-0 z-10 p-8 pb-4" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
             <div className="relative max-w-md mb-3">
               <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 opacity-60" />
@@ -141,67 +226,6 @@ export default function TilesPage() {
                 }}
               />
             </div>
-            
-            {/* Label Filters */}
-            {allLabels.length > 0 && (
-              <div className="mb-2">
-                <div className="text-[10px] opacity-60 uppercase tracking-wide mb-2">Filter by Labels</div>
-                
-                {/* Selected Filter Labels */}
-                {filterLabels.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {filterLabels.map(label => (
-                      <div
-                        key={label}
-                        className="inline-flex items-center gap-1 px-2 py-1 border-2 border-black text-[10px]"
-                        style={{ 
-                          backgroundColor: 'var(--theme-accent)',
-                          boxShadow: '1px 1px 0 #000'
-                        }}
-                      >
-                        <span>{label}</span>
-                        <button
-                          onClick={() => setFilterLabels(prev => prev.filter(l => l !== label))}
-                          className="hover:text-red-600"
-                          title="Remove filter"
-                        >
-                          <XMarkIcon className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => setFilterLabels([])}
-                      className="px-2 py-1 border-2 border-black text-[10px] hover:bg-red-200"
-                      style={{ 
-                        backgroundColor: 'var(--theme-bg-light)',
-                        boxShadow: '1px 1px 0 #000'
-                      }}
-                    >
-                      Clear
-                    </button>
-                  </div>
-                )}
-                
-                {/* Available Labels */}
-                <div className="flex flex-wrap gap-1">
-                  {allLabels
-                    .filter(label => !filterLabels.includes(label))
-                    .map(label => (
-                      <button
-                        key={label}
-                        onClick={() => setFilterLabels(prev => [...prev, label])}
-                        className="px-2 py-1 border-2 border-black text-[10px] hover:bg-[var(--theme-accent)]"
-                        style={{ 
-                          backgroundColor: 'var(--theme-bg-panel)',
-                          boxShadow: '1px 1px 0 #000'
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                </div>
-              </div>
-            )}
             
             {(searchQuery || filterLabels.length > 0) && (
               <div className="mt-2 text-sm opacity-60">
