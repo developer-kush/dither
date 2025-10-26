@@ -747,13 +747,25 @@ export default function MapEditor() {
             {/* Active Labels (Green) */}
             {activeLabels.length > 0 && (
               <div className="mb-4">
-                <div className="text-[10px] opacity-60 uppercase mb-2 font-bold">Active Filters</div>
-                <div className="space-y-1">
-                  {activeLabels.map(label => (
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-[10px] opacity-60 uppercase font-bold">Active Filters</div>
+                  <button
+                    onClick={() => setSelectedLabels([])}
+                    className="px-2 py-1 border-2 border-black text-[10px] font-bold hover:bg-red-200 transition-colors"
+                    style={{
+                      backgroundColor: 'var(--theme-bg-light)',
+                      boxShadow: '1px 1px 0 #000'
+                    }}
+                  >
+                    Clear All
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {activeLabels.sort().map(label => (
                     <button
                       key={label}
                       onClick={() => toggleLabel(label)}
-                      className="w-full px-3 py-2 border-2 border-black text-xs text-left font-bold hover:opacity-80 transition-opacity"
+                      className="px-2 py-1 border-2 border-black text-xs font-bold hover:opacity-80 transition-opacity"
                       style={{
                         backgroundColor: '#90EE90',
                         boxShadow: '2px 2px 0 #000'
@@ -770,12 +782,12 @@ export default function MapEditor() {
             {inactiveLabels.length > 0 && (
               <div>
                 <div className="text-[10px] opacity-60 uppercase mb-2 font-bold">Available Labels</div>
-                <div className="space-y-1">
-                  {inactiveLabels.map(label => (
+                <div className="flex flex-wrap gap-1">
+                  {inactiveLabels.sort().map(label => (
                     <button
                       key={label}
                       onClick={() => toggleLabel(label)}
-                      className="w-full px-3 py-2 border-2 border-black text-xs text-left hover:opacity-80 transition-opacity"
+                      className="px-2 py-1 border-2 border-black text-xs hover:opacity-80 transition-opacity"
                       style={{
                         backgroundColor: '#FFB6B6',
                         boxShadow: '2px 2px 0 #000'
