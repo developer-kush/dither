@@ -11,7 +11,8 @@ import {
   PlusIcon, 
   TrashIcon, 
   Squares2X2Icon,
-  XMarkIcon
+  XMarkIcon,
+  RectangleStackIcon
 } from "@heroicons/react/24/outline";
 
 export function meta() {
@@ -44,9 +45,9 @@ export default function TileStudio() {
   const [compositeTiles, setCompositeTiles] = useState<CompositeTile[]>(compositeTilesData);
   const [selectedCompositeTile, setSelectedCompositeTile] = useState<CompositeTile | null>(null);
   const [editingName, setEditingName] = useState("");
-  const [showTileSelector, setShowTileSelector] = useState(false);
   const [pendingPosition, setPendingPosition] = useState<{x: number, y: number} | null>(null);
   const [tilesMenuOpen, setTilesMenuOpen] = useState(false);
+  const [availableTilesMenuOpen, setAvailableTilesMenuOpen] = useState(false);
 
   // Set theme
   useEffect(() => {
@@ -128,7 +129,7 @@ export default function TileStudio() {
 
   const handleAddTileClick = (x: number, y: number) => {
     setPendingPosition({ x, y });
-    setShowTileSelector(true);
+    setAvailableTilesMenuOpen(true);
   };
 
   const handleTileSelected = (tileId: string) => {
@@ -136,7 +137,7 @@ export default function TileStudio() {
       const isPivot = selectedCompositeTile.tiles.length === 0; // First tile is pivot
       addTileToComposite(tileId, pendingPosition.x, pendingPosition.y, isPivot);
     }
-    setShowTileSelector(false);
+    setAvailableTilesMenuOpen(false);
     setPendingPosition(null);
   };
 
@@ -188,7 +189,7 @@ export default function TileStudio() {
     <div className="w-full h-screen flex flex-col" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
       <NavBar title="Tile Studio" />
 
-      {/* Left Sliding Menu - Composite Tiles Only */}
+      {/* Left Sliding Menu - Composite Tiles */}
       <GameMenu 
         side="left" 
         triggerIcon={<Squares2X2Icon className="w-6 h-6" />}
@@ -234,6 +235,68 @@ export default function TileStudio() {
             ))}
           </div>
         )}
+        </GameSection>
+      </GameMenu>
+
+      {/* Right Sliding Menu - Available Tiles for Selection */}
+      <GameMenu 
+        side="right" 
+        triggerIcon={<RectangleStackIcon className="w-6 h-6" />}
+        onOpenChange={setAvailableTilesMenuOpen}
+      >
+        <GameSection title="Available Tiles">
+          {pendingPosition && (
+            <div className="mb-4 p-2 border-2 border-black text-sm" style={{ backgroundColor: 'var(--theme-bg-medium)' }}>
+              Adding tile at position ({pendingPosition.x}, {pendingPosition.y})
+      </div>
+          )}
+          
+          {basicTiles.length === 0 ? (
+            <div className="text-sm opacity-60 text-center py-4">
+              <p>No basic tiles available</p>
+              <Link to="/tile-editor" className="underline text-blue-600">Create tiles in Tile Editor</Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              {basicTiles.map(tile => (
+                <div
+                  key={tile.id}
+                  className="border-2 border-black cursor-pointer p-2 transition-all hover:scale-105"
+                  style={{ 
+                    backgroundColor: 'var(--theme-bg-light)',
+                    boxShadow: '2px 2px 0 #000'
+                  }}
+                  onClick={() => handleTileSelected(tile.id)}
+                  title={tile.name}
+                >
+                  <canvas
+                    ref={(canvas) => {
+                      if (!canvas) return;
+                      const ctx = canvas.getContext('2d');
+                      if (!ctx) return;
+
+                      canvas.width = tile.size;
+                      canvas.height = tile.size;
+
+                      for (let y = 0; y < tile.size; y++) {
+                        for (let x = 0; x < tile.size; x++) {
+                          const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
+                          ctx.fillStyle = color;
+                          ctx.fillRect(x, y, 1, 1);
+                        }
+                      }
+                    }}
+                    style={{ 
+                      imageRendering: 'pixelated',
+                      width: '100%',
+                      height: 'auto'
+                    }}
+                  />
+                  <div className="text-xs mt-1 text-center font-bold truncate">{tile.name}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </GameSection>
       </GameMenu>
 
@@ -305,10 +368,10 @@ export default function TileStudio() {
                 <div className="text-center p-8 opacity-60">Error: No positions available</div>
               ) : (
                 <div className="flex items-center justify-center">
-                  {/* Grid Container - Dynamically sized based on tile positions */}
-                  <div className="inline-grid gap-0" style={{ 
-                    gridTemplateColumns: 'repeat(auto-fit, 128px)',
-                    gridAutoRows: '128px'
+                  {/* Grid Container - Fixed size tiles */}
+                  <div className="inline-grid gap-2" style={{ 
+                    gridTemplateColumns: 'repeat(auto-fit, 96px)',
+                    gridAutoRows: '96px'
                   }}>
                     {/* Render existing tiles */}
                     {selectedCompositeTile.tiles.map(tileEntry => {
@@ -323,6 +386,8 @@ export default function TileStudio() {
                             gridColumn: `${tileEntry.offsetX + 10} / span 1`,
                             gridRow: `${tileEntry.offsetY + 10} / span 1`,
                           backgroundColor: 'var(--theme-bg-panel)',
+                          width: '96px',
+                          height: '96px'
                         }}
                       >
                         <canvas
@@ -374,7 +439,9 @@ export default function TileStudio() {
                         style={{ 
                           gridColumn: `${pos.x + 10} / span 1`,
                           gridRow: `${pos.y + 10} / span 1`,
-                          backgroundColor: 'transparent'
+                          backgroundColor: 'transparent',
+                          width: '96px',
+                          height: '96px'
                         }}
                         onClick={() => handleAddTileClick(pos.x, pos.y)}
                         title="Add tile here"
@@ -390,74 +457,6 @@ export default function TileStudio() {
               )}
             </div>
 
-      {/* Tile Selector Modal */}
-      {showTileSelector && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div 
-            className="border-4 border-black p-6 max-w-4xl max-h-[80vh] overflow-auto"
-            style={{ backgroundColor: 'var(--theme-bg-light)', boxShadow: '8px 8px 0 #000' }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold">Select a Tile</h2>
-              <GameButton
-                icon
-                onClick={() => {
-                  setShowTileSelector(false);
-                  setPendingPosition(null);
-                }}
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </GameButton>
-            </div>
-
-            {basicTiles.length === 0 ? (
-              <div className="text-center p-8 opacity-60">
-                <p>No basic tiles available</p>
-                <Link to="/tile-editor" className="underline">Create tiles first in Tile Editor</Link>
-                </div>
-              ) : (
-              <div className="grid grid-cols-6 gap-4">
-                {basicTiles.map(tile => (
-                      <div
-                        key={tile.id}
-                    className="border-2 border-black cursor-pointer p-3 transition-all hover:scale-105"
-                        style={{ 
-                          backgroundColor: 'var(--theme-bg-panel)',
-                          boxShadow: '2px 2px 0 #000'
-                        }}
-                    onClick={() => handleTileSelected(tile.id)}
-                      >
-                        <canvas
-                          ref={(canvas) => {
-                            if (!canvas) return;
-                            const ctx = canvas.getContext('2d');
-                            if (!ctx) return;
-
-                            canvas.width = tile.size;
-                            canvas.height = tile.size;
-
-                            for (let y = 0; y < tile.size; y++) {
-                              for (let x = 0; x < tile.size; x++) {
-                                const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
-                                ctx.fillStyle = color;
-                                ctx.fillRect(x, y, 1, 1);
-                              }
-                            }
-                          }}
-                          style={{ 
-                            imageRendering: 'pixelated',
-                            width: '100%',
-                            height: 'auto'
-                          }}
-                        />
-                    <div className="text-xs mt-2 text-center font-bold truncate">{tile.name}</div>
-                      </div>
-                ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
     </div>
   );
 }
