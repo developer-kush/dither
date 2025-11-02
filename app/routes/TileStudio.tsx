@@ -16,7 +16,8 @@ import {
   XMarkIcon,
   RectangleStackIcon,
   FilmIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  Cog6ToothIcon
 } from "@heroicons/react/24/outline";
 
 export function meta() {
@@ -87,6 +88,7 @@ export default function TileStudio() {
   
   const [editingName, setEditingName] = useState("");
   const [tilesMenuOpen, setTilesMenuOpen] = useState(false);
+  const [propertiesMenuOpen, setPropertiesMenuOpen] = useState(false);
   const [availableTilesMenuOpen, setAvailableTilesMenuOpen] = useState(false);
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -105,34 +107,29 @@ export default function TileStudio() {
 
   // Save animated tiles to localStorage
   useEffect(() => {
-    setAnimatedTilesData(animatedTiles);
-  }, [animatedTiles, setAnimatedTilesData]);
+    if (animatedTiles) {
+      setAnimatedTilesData(animatedTiles);
+    }
+  }, [animatedTiles]);
 
   // Save composite tiles to localStorage
   useEffect(() => {
+    if (compositeTiles) {
     setCompositeTilesData(compositeTiles);
-  }, [compositeTiles, setCompositeTilesData]);
-  
+    }
+  }, [compositeTiles]);
+
   // Save tool state to localStorage
   useEffect(() => {
     setToolStateData(toolState);
-  }, [toolState, setToolStateData]);
-  
-  // Keyboard shortcuts - F key to toggle tools
+  }, [toolState]);
+
+  // F key to toggle tool
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-        return;
-      }
-      
-      const key = e.key.toLowerCase();
-      
-      // Toggle tools with F key
-      if (key === 'f') {
+      if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
         e.preventDefault();
         setCurrentTool(prev => prev === 'animated' ? 'composite' : 'animated');
-        return;
       }
     };
     
@@ -244,10 +241,10 @@ export default function TileStudio() {
     ));
   };
   
-  const removeFrameFromAnimatedTile = (id: string, frameIndex: number) => {
+  const removeFrameFromAnimatedTile = (id: string, index: number) => {
     setAnimatedTiles(prev => (prev || []).map(at => 
       at.id === id 
-        ? { ...at, frameIds: (at.frameIds || []).filter((_, i) => i !== frameIndex) }
+        ? { ...at, frameIds: (at.frameIds || []).filter((_, i) => i !== index) } 
         : at
     ));
   };
@@ -256,28 +253,25 @@ export default function TileStudio() {
     const animatedTile = animatedTiles?.find(at => at.id === id);
     if (!animatedTile) return;
     
-    // Validate at least 1 frame exists
-    if (!animatedTile.frameIds || animatedTile.frameIds.length === 0) {
-      setToastMessage('Cannot publish: Add at least 1 frame!');
-      return;
-    }
-    
-    // Save as complex tile in the tiles system
+    // Create the published complex tile in the main tiles system
     saveTile(
       animatedTile.name,
-      [[]], // Empty grid, not used for animated tiles
-      16, // Default size
-      null, // No folder
-      id, // Use animated tile ID
+      [[]], // Empty grid for complex tiles
+      16,
+      null,
+      id,
       true, // isComplex
       animatedTile.frameIds,
-      animatedTile.fps || 10
+      animatedTile.fps
     );
     
-    // Mark as published
+    // Mark as published in animated tiles list
     setAnimatedTiles(prev => (prev || []).map(at => 
       at.id === id ? { ...at, isPublished: true } : at
     ));
+    
+    // Publish the tile
+    publishTile(id);
   };
 
   // === COMPOSITE TILE FUNCTIONS ===
@@ -322,12 +316,23 @@ export default function TileStudio() {
     ));
   };
 
-
-  // Get all available tiles for selection (basic tiles from tile editor + published animated tiles from studio)
-  const basicTiles = tiles.filter(t => !t.isComplex);
-  const publishedAnimatedTiles = tiles.filter(t => t.isComplex && t.animationFrames);
-  const allAvailableTiles = [...basicTiles, ...publishedAnimatedTiles];
+  // === SHARED FUNCTIONS ===
   
+  const selectDraftTile = (tool: StudioTool, tileId: string) => {
+    setToolState(prev => ({
+      ...prev,
+      [tool]: { currentTileId: tileId }
+    }));
+    
+    if (tool === 'animated') {
+      const tile = animatedTiles?.find(at => at.id === tileId);
+      if (tile) setEditingName(tile.name);
+    } else if (tool === 'composite') {
+      const tile = compositeTiles?.find(ct => ct.id === tileId);
+      if (tile) setEditingName(tile.name);
+    }
+  };
+
   // Helper function to convert AnimatedTile to Tile format for rendering
   const getAnimatedTileAsTile = (animatedTile: AnimatedTile): any => {
     if (!animatedTile.frameIds || animatedTile.frameIds.length === 0) {
@@ -363,26 +368,11 @@ export default function TileStudio() {
   // Get current tile based on active tool
   const currentAnimatedTile = getCurrentAnimatedTile();
   const currentCompositeTile = getCurrentCompositeTile();
-  
-  // Select a draft tile from the menu
-  const selectDraftTile = (type: 'animated' | 'composite', id: string) => {
-    if (type === 'animated') {
-      setToolState(prev => ({
-        ...prev,
-        animated: { currentTileId: id }
-      }));
-      const tile = animatedTiles?.find(t => t.id === id);
-      if (tile) setEditingName(tile.name);
-    } else {
-      setToolState(prev => ({
-        ...prev,
-        composite: { currentTileId: id }
-      }));
-      const tile = compositeTiles?.find(t => t.id === id);
-      if (tile) setEditingName(tile.name);
-    }
-    setTilesMenuOpen(false);
-  };
+
+  // Available tiles for frame selection
+  const allAvailableTiles = tiles.filter(t => !t.isComplex);
+  const basicTiles = tiles.filter(t => !t.isComplex && !t.isPublished);
+  const publishedAnimatedTiles = tiles.filter(t => t.isComplex && t.animationFrames && t.isPublished);
   
   // Handlers for New menu with delay
   const handleNewMenuEnter = () => {
@@ -397,234 +387,6 @@ export default function TileStudio() {
     newMenuTimeoutRef.current = setTimeout(() => {
       setNewMenuOpen(false);
     }, 200); // 200ms delay
-  };
-
-  // Render function for animated tile tool
-  const renderAnimatedTool = () => {
-    const currentTile = currentAnimatedTile;
-    
-    if (!currentTile) {
-  return (
-        <div className="flex-1 flex items-center justify-center text-center">
-          <div>
-            <div className="text-2xl opacity-60 mb-4">Create a new animated tile to begin</div>
-            <p className="text-sm opacity-50 max-w-md mx-auto">
-              Animated tiles let you create frame-by-frame animations from existing tiles. 
-              Hover over the "+" button in the top right to get started.
-            </p>
-          </div>
-              </div>
-      );
-    }
-    
-    return (
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Section with Icon/Name Panel and Preview */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left Top Panel - Icon and Properties */}
-          <div className="w-80 p-4 border-r-2 border-black" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
-            <div className="border-2 border-black p-4 mb-4" style={{ backgroundColor: 'var(--theme-bg-medium)' }}>
-              <div className="font-bold mb-3">ICON AND NAME</div>
-              
-              {/* Icon Preview */}
-              <div className="w-24 h-24 border-2 border-black mb-3 mx-auto" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
-                {currentTile.frameIds && currentTile.frameIds.length > 0 && getTile(currentTile.frameIds[0]) && (
-                  <canvas
-                    ref={(canvas) => {
-                      if (!canvas) return;
-                      const tile = getTile(currentTile.frameIds[0]);
-                      if (!tile) return;
-                      const ctx = canvas.getContext('2d');
-                      if (!ctx) return;
-
-                      canvas.width = tile.size;
-                      canvas.height = tile.size;
-
-                      for (let y = 0; y < tile.size; y++) {
-                        for (let x = 0; x < tile.size; x++) {
-                          const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
-                          ctx.fillStyle = color;
-                          ctx.fillRect(x, y, 1, 1);
-                        }
-                      }
-                    }}
-                    className="w-full h-full"
-                    style={{ imageRendering: 'pixelated' }}
-                  />
-                )}
-              </div>
-              
-              {/* Properties */}
-              <div className="space-y-2 text-sm">
-                <div>
-                  <label className="font-bold block mb-1">NAME</label>
-                  <input
-                    type="text"
-                    value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
-                    onBlur={() => updateAnimatedTileName(currentTile.id, editingName)}
-                    className="w-full p-1 border-2 border-black text-sm"
-                    style={{ backgroundColor: 'var(--theme-bg-light)' }}
-                  />
-                </div>
-                
-                <div>
-                  <label className="font-bold block mb-1">ID</label>
-                  <input
-                    type="text"
-                    value={currentTile.id}
-                    disabled
-                    className="w-full p-1 border-2 border-black text-xs opacity-50"
-                    style={{ backgroundColor: 'var(--theme-bg-light)' }}
-                  />
-                </div>
-                
-                <div>
-                  <label className="font-bold block mb-1">FPS</label>
-                  <input
-                    type="number"
-                    value={currentTile.fps}
-                    onChange={(e) => updateAnimatedTileFPS(currentTile.id, parseInt(e.target.value) || 1)}
-                    min="1"
-                    max="60"
-                    className="w-full p-1 border-2 border-black text-sm"
-                    style={{ backgroundColor: 'var(--theme-bg-light)' }}
-                  />
-                </div>
-                
-                <div className="flex gap-2">
-                  <GameButton 
-                    onClick={() => {
-                      if (!currentTile.frameIds || currentTile.frameIds.length === 0) {
-                        setToastMessage('Cannot save: Add at least 1 frame!');
-                        return;
-                      }
-                      setToastMessage('Saved to drafts!');
-                    }}
-                    className="flex-1 text-sm"
-                    style={{ 
-                      padding: '6px',
-                      opacity: (!currentTile.frameIds || currentTile.frameIds.length === 0) ? 0.5 : 1,
-                      cursor: (!currentTile.frameIds || currentTile.frameIds.length === 0) ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    SAVE
-                  </GameButton>
-                  
-                  <GameButton 
-                    onClick={() => {
-                      if (!currentTile.frameIds || currentTile.frameIds.length === 0) {
-                        setToastMessage('Cannot publish: Add at least 1 frame!');
-                        return;
-                      }
-                      publishAnimatedTile(currentTile.id);
-                      setToastMessage('Published to Tiles!');
-                    }}
-                    className="flex-1 text-sm"
-                    style={{ 
-                      padding: '6px',
-                      opacity: (!currentTile.frameIds || currentTile.frameIds.length === 0) ? 0.5 : 1,
-                      cursor: (!currentTile.frameIds || currentTile.frameIds.length === 0) ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    PUBLISH
-                  </GameButton>
-                </div>
-                
-                {currentTile.isPublished && (
-                  <div className="text-xs text-center p-1 border border-black" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
-                    ✓ Published to Tiles
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* Center - Large Preview Canvas */}
-          <div className="flex-1 flex items-center justify-center p-8" style={{ backgroundColor: 'var(--theme-bg-medium)' }}>
-            {!currentTile.frameIds || currentTile.frameIds.length === 0 ? (
-              <div className="text-center opacity-50">
-                <div className="text-xl mb-2">No frames yet</div>
-                <div className="text-sm">Add frames below to see preview</div>
-              </div>
-            ) : (
-              <div className="border-2 border-black" style={{ width: '400px', height: '400px', backgroundColor: 'var(--theme-bg-light)' }}>
-                <AnimatedTilePreview 
-                  frameIds={currentTile.frameIds} 
-                  fps={currentTile.fps || 10}
-                  getTile={getTile}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* Bottom Strip - Frames */}
-        <div className="h-40 border-t-2 border-black p-3" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
-          <div className="flex gap-2 h-full overflow-x-auto">
-            {(currentTile.frameIds || []).map((frameId, index) => {
-              const tile = getTile(frameId);
-              if (!tile) return null;
-              
-              return (
-                <div key={index} className="relative">
-                  <TileItem
-                    tile={tile}
-                    size="large"
-                    showName={false}
-                    showTypeIcon={true}
-                    selected={selectedFrameIndex === index}
-                    onClick={() => setSelectedFrameIndex(index)}
-                    getTile={getTile}
-                  />
-                  <GameButton
-                    icon
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeFrameFromAnimatedTile(currentTile.id, index);
-                      if (selectedFrameIndex === index) setSelectedFrameIndex(null);
-                    }}
-                    className="absolute top-1 right-1"
-                    style={{ padding: '2px', zIndex: 10 }}
-                    title="Remove frame"
-                  >
-                    <XMarkIcon className="w-3 h-3" />
-                  </GameButton>
-                </div>
-              );
-            })}
-            
-            {/* Add Frame Button */}
-            <div
-              className="flex-shrink-0 border-2 border-dashed border-black flex items-center justify-center cursor-pointer hover:bg-[var(--theme-bg-light)] transition-colors"
-              style={{ 
-                width: '120px',
-                height: '120px',
-                backgroundColor: 'rgba(255, 255, 0, 0.2)'
-              }}
-              onClick={() => setAvailableTilesMenuOpen(true)}
-              title="Add frame"
-            >
-              <PlusIcon className="w-12 h-12 opacity-50" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-  
-  // Render function for composite tile tool (placeholder)
-  const renderCompositeTool = () => {
-    return (
-      <div className="flex-1 flex items-center justify-center text-center">
-        <div>
-          <div className="text-2xl opacity-60 mb-4">Composite Tool</div>
-          <p className="text-sm opacity-50 max-w-md mx-auto">
-            Coming soon! This tool will let you create multi-tile structures.
-          </p>
-        </div>
-      </div>
-    );
   };
 
   // New button and dropdown menu for NavBar
@@ -722,27 +484,15 @@ export default function TileStudio() {
         ) : (
               <div className="flex flex-col gap-3">
                 {compositeTiles.map(ct => {
-                  // Create a placeholder tile for composite (will be properly rendered when composite tool is implemented)
-                  const placeholderTile: any = {
-                    id: ct.id,
-                    name: ct.name,
-                    grid: [[]], 
-                    size: 16,
-                    isComplex: false,
-                    createdAt: Date.now(),
-                    updatedAt: Date.now(),
-                    folderId: null
-                  };
-                  
                   return (
-                    <div
-                      key={ct.id}
+                <div
+                  key={ct.id}
                       className={`relative border-2 border-black cursor-pointer transition-all overflow-hidden ${
                         toolState.composite.currentTileId === ct.id && currentTool === 'composite' 
                           ? 'ring-4 ring-blue-500' 
                           : ''
-                      }`}
-                      style={{ 
+                }`}
+                style={{ 
                         width: '140px',
                         backgroundColor: '#c0c0c0',
                         boxShadow: '4px 4px 0 #000'
@@ -756,14 +506,14 @@ export default function TileStudio() {
                         
                         {/* Delete Button */}
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteCompositeTile(ct.id);
-                          }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                      deleteCompositeTile(ct.id);
+                  }}
                           className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center border border-black hover:scale-110 transition-transform"
                           style={{ backgroundColor: '#ef4444' }}
-                          title="Delete"
-                        >
+                  title="Delete"
+                >
                           <XMarkIcon className="w-3 h-3 text-white" />
                         </button>
                       </div>
@@ -788,7 +538,7 @@ export default function TileStudio() {
         </GameSection>
       </GameMenu>
 
-      {/* Right Sliding Menu - Available Tiles for Frame Selection */}
+      {/* Right Top Sliding Menu - Available Tiles for Frame Selection */}
       <GameMenu 
         side="right" 
         triggerIcon={<RectangleStackIcon className="w-6 h-6" />}
@@ -811,6 +561,7 @@ export default function TileStudio() {
                   key={tile.id}
                         tile={tile}
                         size="small"
+                        showName={true}
                         showTypeIcon={false}
                         onClick={() => {
                           if (currentAnimatedTile) {
@@ -834,6 +585,7 @@ export default function TileStudio() {
                         key={tile.id}
                         tile={tile}
                         size="small"
+                        showName={true}
                         showTypeIcon={true}
                         onClick={() => {
                           if (currentAnimatedTile) {
@@ -852,10 +604,161 @@ export default function TileStudio() {
         </GameSection>
       </GameMenu>
 
-      {/* Main Content */}
-      <div className="flex-1 mt-16 ml-4 flex flex-col overflow-hidden">
-        {/* Tool Content */}
-        {currentTool === 'animated' ? renderAnimatedTool() : renderCompositeTool()}
+      {/* Right Bottom Sliding Menu - Properties and Frames */}
+      {currentAnimatedTile && currentTool === 'animated' && (
+        <GameMenu 
+          side="right" 
+          triggerIcon={<Cog6ToothIcon className="w-6 h-6" />}
+          onOpenChange={setPropertiesMenuOpen}
+        >
+          <GameSection title="Properties">
+            <div className="space-y-3">
+            <div>
+                <label className="font-bold block mb-1 text-sm">NAME</label>
+                <input
+                  type="text"
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onBlur={() => updateAnimatedTileName(currentAnimatedTile.id, editingName)}
+                  className="w-full p-2 border-2 border-black text-sm"
+                  style={{ backgroundColor: 'var(--theme-bg-light)' }}
+                />
+              </div>
+              
+              <div>
+                <label className="font-bold block mb-1 text-sm">FPS</label>
+                <input
+                  type="number"
+                  value={currentAnimatedTile.fps}
+                  onChange={(e) => updateAnimatedTileFPS(currentAnimatedTile.id, parseInt(e.target.value) || 1)}
+                  min="1"
+                  max="60"
+                  className="w-full p-2 border-2 border-black text-sm"
+                  style={{ backgroundColor: 'var(--theme-bg-light)' }}
+                />
+              </div>
+              
+              <div className="flex gap-2 pt-2">
+                <GameButton 
+                  onClick={() => {
+                    if (!currentAnimatedTile.frameIds || currentAnimatedTile.frameIds.length === 0) {
+                      setToastMessage('Cannot save: Add at least 1 frame!');
+                      return;
+                    }
+                    setToastMessage('Saved to drafts!');
+                  }}
+                  className="flex-1 text-sm"
+                  style={{ 
+                    opacity: (!currentAnimatedTile.frameIds || currentAnimatedTile.frameIds.length === 0) ? 0.5 : 1,
+                    cursor: (!currentAnimatedTile.frameIds || currentAnimatedTile.frameIds.length === 0) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  SAVE
+                </GameButton>
+                
+                <GameButton 
+                  onClick={() => {
+                    if (!currentAnimatedTile.frameIds || currentAnimatedTile.frameIds.length === 0) {
+                      setToastMessage('Cannot publish: Add at least 1 frame!');
+                      return;
+                    }
+                    publishAnimatedTile(currentAnimatedTile.id);
+                    setToastMessage('Published to Tiles!');
+                  }}
+                  className="flex-1 text-sm"
+                  style={{ 
+                    opacity: (!currentAnimatedTile.frameIds || currentAnimatedTile.frameIds.length === 0) ? 0.5 : 1,
+                    cursor: (!currentAnimatedTile.frameIds || currentAnimatedTile.frameIds.length === 0) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  PUBLISH
+                </GameButton>
+              </div>
+              
+              {currentAnimatedTile.isPublished && (
+                <div className="text-xs text-center p-2 border border-black font-bold" style={{ backgroundColor: '#90EE90' }}>
+                  ✓ Published to Tiles
+                </div>
+              )}
+            </div>
+          </GameSection>
+          
+          <GameSection title="Frames">
+            <div className="space-y-2">
+              {(!currentAnimatedTile.frameIds || currentAnimatedTile.frameIds.length === 0) ? (
+                <div className="text-sm opacity-60 text-center py-4">
+                  No frames yet
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {currentAnimatedTile.frameIds.map((frameId, index) => {
+                    const tile = getTile(frameId);
+                    if (!tile) return null;
+
+                    return (
+                      <div key={index} className="relative">
+                        <TileItem
+                          tile={tile}
+                          size="small"
+                          showName={false}
+                          showTypeIcon={true}
+                          selected={selectedFrameIndex === index}
+                          onClick={() => setSelectedFrameIndex(index)}
+                          getTile={getTile}
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFrameFromAnimatedTile(currentAnimatedTile.id, index);
+                            if (selectedFrameIndex === index) setSelectedFrameIndex(null);
+                          }}
+                          className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center border border-black hover:scale-110 transition-transform"
+                          style={{ backgroundColor: '#ef4444' }}
+                          title="Remove frame"
+                        >
+                          <XMarkIcon className="w-3 h-3 text-white" />
+                        </button>
+                        <div className="absolute bottom-1 left-1 bg-black text-white px-1 text-xs font-bold">
+                          {index + 1}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </GameSection>
+        </GameMenu>
+      )}
+
+      {/* Main Canvas Area - Centered Preview */}
+      <div className="w-full h-screen pt-16 flex items-center justify-center">
+        {!currentAnimatedTile && !currentCompositeTile ? (
+          <div className="text-center opacity-50">
+            <div className="text-2xl mb-2">No tile selected</div>
+            <div className="text-sm">Create or select a tile to begin</div>
+          </div>
+        ) : currentTool === 'animated' && currentAnimatedTile ? (
+          !currentAnimatedTile.frameIds || currentAnimatedTile.frameIds.length === 0 ? (
+            <div className="text-center opacity-50">
+              <div className="text-xl mb-2">No frames yet</div>
+              <div className="text-sm">Add frames from the Available Tiles menu</div>
+            </div>
+          ) : (
+            <div className="border-2 border-black" style={{ width: '400px', height: '400px', backgroundColor: 'var(--theme-bg-light)', boxShadow: '8px 8px 0 #000' }}>
+              <AnimatedTilePreview 
+                frameIds={currentAnimatedTile.frameIds} 
+                fps={currentAnimatedTile.fps || 10}
+                getTile={getTile}
+              />
+            </div>
+          )
+        ) : (
+          <div className="text-center opacity-50">
+            <div className="text-xl mb-2">Composite Tool</div>
+            <div className="text-sm">Coming soon!</div>
+          </div>
+        )}
       </div>
       
       {/* Toast Notification */}
@@ -923,4 +826,3 @@ function AnimatedTilePreview({
                           />
   );
 }
-
