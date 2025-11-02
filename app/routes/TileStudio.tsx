@@ -26,7 +26,7 @@ export function meta() {
   ];
 }
 
-// Tool types in Tile Studio
+// Tool types in Studio
 type StudioTool = 'animated' | 'composite';
 
 // Tool state - remembers which tile was being worked on for each tool

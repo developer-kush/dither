@@ -210,7 +210,7 @@ export default function TilesPage() {
                 {searchQuery ? 'No tiles found matching your search' : 'No tiles yet'}
               </div>
               {!searchQuery && (
-                <a href="/tile-editor" className="underline text-lg">
+                <a href="/canvas" className="underline text-lg">
                   Create your first tile
                 </a>
               )}
