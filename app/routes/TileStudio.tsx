@@ -7,6 +7,7 @@ import { GameButton } from "../components/GameButton";
 import { NavBar } from "../components/NavBar";
 import { GameMenu } from "../components/GameMenu";
 import { GameSection } from "../components/GameSection";
+import { Toast } from "../components/Toast";
 import { 
   PlusIcon, 
   TrashIcon, 
@@ -87,6 +88,7 @@ export default function TileStudio() {
   const [tilesMenuOpen, setTilesMenuOpen] = useState(false);
   const [availableTilesMenuOpen, setAvailableTilesMenuOpen] = useState(false);
   const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   
   // Animated tile specific state
   const [selectedFrameIndex, setSelectedFrameIndex] = useState<number | null>(null);
@@ -264,8 +266,10 @@ export default function TileStudio() {
   };
 
 
-  // Get the basic tiles (non-complex) for the frame selector
+  // Get all available tiles for selection (basic tiles from tile editor + published animated tiles from studio)
   const basicTiles = tiles.filter(t => !t.isComplex);
+  const publishedAnimatedTiles = tiles.filter(t => t.isComplex && t.animationFrames);
+  const allAvailableTiles = [...basicTiles, ...publishedAnimatedTiles];
   
   // Get current tile based on active tool
   const currentAnimatedTile = getCurrentAnimatedTile();
@@ -302,7 +306,7 @@ export default function TileStudio() {
             <div className="text-2xl opacity-60 mb-4">Create a new animated tile to begin</div>
             <p className="text-sm opacity-50 max-w-md mx-auto">
               Animated tiles let you create frame-by-frame animations from existing tiles. 
-              Click the "+" button in the top right to get started.
+              Hover over the "+" button in the top right to get started.
             </p>
           </div>
         </div>
@@ -310,15 +314,16 @@ export default function TileStudio() {
     }
     
     return (
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel - Icon and Properties */}
-        <div className="w-80 border-r-2 border-black flex flex-col" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
-          <div className="p-4 border-b-2 border-black">
-            <div className="font-bold text-lg mb-4">ICON AND NAME</div>
-            
-            {/* Icon Preview */}
-            <div className="border-2 border-black mb-4 p-4" style={{ backgroundColor: 'var(--theme-bg-medium)' }}>
-              <div className="w-32 h-32 border-2 border-black mx-auto" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Section with Icon/Name Panel and Preview */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Top Panel - Icon and Properties */}
+          <div className="w-80 p-4 border-r-2 border-black" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
+            <div className="border-2 border-black p-4 mb-4" style={{ backgroundColor: 'var(--theme-bg-medium)' }}>
+              <div className="font-bold mb-3">ICON AND NAME</div>
+              
+              {/* Icon Preview */}
+              <div className="w-24 h-24 border-2 border-black mb-3 mx-auto" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
                 {currentTile.frameIds && currentTile.frameIds.length > 0 && getTile(currentTile.frameIds[0]) && (
                   <canvas
                     ref={(canvas) => {
@@ -344,156 +349,166 @@ export default function TileStudio() {
                   />
                 )}
               </div>
-            </div>
-            
-            {/* Properties */}
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold mb-1 block">NAME</label>
-                <input
-                  type="text"
-                  value={editingName}
-                  onChange={(e) => setEditingName(e.target.value)}
-                  onBlur={() => updateAnimatedTileName(currentTile.id, editingName)}
-                  className="w-full p-2 border-2 border-black text-sm"
-                  style={{ backgroundColor: 'var(--theme-bg-light)' }}
-                />
-              </div>
               
-              <div>
-                <label className="text-xs font-bold mb-1 block">ID</label>
-                <input
-                  type="text"
-                  value={currentTile.id}
-                  disabled
-                  className="w-full p-2 border-2 border-black text-sm opacity-50"
-                  style={{ backgroundColor: 'var(--theme-bg-medium)' }}
-                />
-              </div>
-              
-              <div>
-                <label className="text-xs font-bold mb-1 block">FPS</label>
-                <input
-                  type="number"
-                  value={currentTile.fps}
-                  onChange={(e) => updateAnimatedTileFPS(currentTile.id, parseInt(e.target.value) || 1)}
-                  min="1"
-                  max="60"
-                  className="w-full p-2 border-2 border-black text-sm"
-                  style={{ backgroundColor: 'var(--theme-bg-light)' }}
-                />
-              </div>
-              
-              <GameButton 
-                onClick={() => publishAnimatedTile(currentTile.id)}
-                className="w-full"
-              >
-                {currentTile.isPublished ? 'UPDATE' : 'PUBLISH'}
-              </GameButton>
-              
-              {currentTile.isPublished && (
-                <div className="text-xs text-center p-2 border-2 border-black" style={{ backgroundColor: 'var(--theme-bg-medium)' }}>
-                  Published to Tiles
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* Center Panel - Preview */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 flex items-center justify-center p-8" style={{ backgroundColor: 'var(--theme-bg-medium)' }}>
-            <div className="border-4 border-black p-8" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
-              {!currentTile.frameIds || currentTile.frameIds.length === 0 ? (
-                <div className="w-64 h-64 flex items-center justify-center text-center opacity-50">
-                  Add frames below to see preview
-                </div>
-              ) : (
-                <div className="w-64 h-64 border-2 border-black">
-                  <AnimatedTilePreview 
-                    frameIds={currentTile.frameIds} 
-                    fps={currentTile.fps || 10}
-                    getTile={getTile}
+              {/* Properties */}
+              <div className="space-y-2 text-sm">
+                <div>
+                  <label className="font-bold block mb-1">NAME</label>
+                  <input
+                    type="text"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onBlur={() => updateAnimatedTileName(currentTile.id, editingName)}
+                    className="w-full p-1 border-2 border-black text-sm"
+                    style={{ backgroundColor: 'var(--theme-bg-light)' }}
                   />
                 </div>
-              )}
+                
+                <div>
+                  <label className="font-bold block mb-1">ID</label>
+                  <input
+                    type="text"
+                    value={currentTile.id}
+                    disabled
+                    className="w-full p-1 border-2 border-black text-xs opacity-50"
+                    style={{ backgroundColor: 'var(--theme-bg-light)' }}
+                  />
+                </div>
+                
+                <div>
+                  <label className="font-bold block mb-1">FPS</label>
+                  <input
+                    type="number"
+                    value={currentTile.fps}
+                    onChange={(e) => updateAnimatedTileFPS(currentTile.id, parseInt(e.target.value) || 1)}
+                    min="1"
+                    max="60"
+                    className="w-full p-1 border-2 border-black text-sm"
+                    style={{ backgroundColor: 'var(--theme-bg-light)' }}
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <GameButton 
+                    onClick={() => {
+                      // Save is automatic via localStorage, just show feedback
+                      setToastMessage('Saved to drafts!');
+                    }}
+                    className="flex-1 text-sm"
+                    style={{ padding: '6px' }}
+                  >
+                    SAVE
+                  </GameButton>
+                  
+                  <GameButton 
+                    onClick={() => {
+                      publishAnimatedTile(currentTile.id);
+                      setToastMessage('Published to Tiles!');
+                    }}
+                    className="flex-1 text-sm"
+                    style={{ padding: '6px' }}
+                  >
+                    PUBLISH
+                  </GameButton>
+                </div>
+                
+                {currentTile.isPublished && (
+                  <div className="text-xs text-center p-1 border border-black" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
+                    ✓ Published to Tiles
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           
-          {/* Bottom Panel - Frames */}
-          <div className="h-48 border-t-2 border-black p-4" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
-            <div className="font-bold mb-2">FRAMES ({currentTile.frameIds?.length || 0})</div>
-            <div className="flex gap-2 overflow-x-auto">
-              {(currentTile.frameIds || []).map((frameId, index) => {
-                const tile = getTile(frameId);
-                if (!tile) return null;
-                
-                return (
-                  <div
-                    key={index}
-                    className={`relative flex-shrink-0 border-2 border-black cursor-pointer ${
-                      selectedFrameIndex === index ? 'ring-4 ring-blue-500' : ''
-                    }`}
-                    style={{ 
-                      width: '100px',
-                      height: '100px',
-                      backgroundColor: 'var(--theme-bg-light)'
-                    }}
-                    onClick={() => setSelectedFrameIndex(index)}
-                  >
-                    <canvas
-                      ref={(canvas) => {
-                        if (!canvas) return;
-                        const ctx = canvas.getContext('2d');
-                        if (!ctx) return;
-
-                        canvas.width = tile.size;
-                        canvas.height = tile.size;
-
-                        for (let y = 0; y < tile.size; y++) {
-                          for (let x = 0; x < tile.size; x++) {
-                            const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
-                            ctx.fillStyle = color;
-                            ctx.fillRect(x, y, 1, 1);
-                          }
-                        }
-                      }}
-                      className="w-full h-full"
-                      style={{ imageRendering: 'pixelated' }}
-                    />
-                    <GameButton
-                      icon
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeFrameFromAnimatedTile(currentTile.id, index);
-                        if (selectedFrameIndex === index) setSelectedFrameIndex(null);
-                      }}
-                      className="absolute top-1 right-1"
-                      style={{ padding: '4px' }}
-                      title="Remove frame"
-                    >
-                      <XMarkIcon className="w-3 h-3" />
-                    </GameButton>
-                    <div className="absolute bottom-0 left-0 right-0 text-center text-xs bg-black text-white opacity-75">
-                      Frame {index + 1}
-                    </div>
-                  </div>
-                );
-              })}
-              
-              {/* Add Frame Button */}
-              <div
-                className="flex-shrink-0 border-2 border-dashed border-black flex items-center justify-center cursor-pointer hover:bg-[var(--theme-bg-medium)] transition-colors"
-                style={{ 
-                  width: '100px',
-                  height: '100px',
-                  backgroundColor: 'transparent'
-                }}
-                onClick={() => setAvailableTilesMenuOpen(true)}
-                title="Add frame"
-              >
-                <PlusIcon className="w-8 h-8 opacity-50" />
+          {/* Center - Large Preview Canvas */}
+          <div className="flex-1 flex items-center justify-center p-8" style={{ backgroundColor: 'var(--theme-bg-medium)' }}>
+            {!currentTile.frameIds || currentTile.frameIds.length === 0 ? (
+              <div className="text-center opacity-50">
+                <div className="text-xl mb-2">No frames yet</div>
+                <div className="text-sm">Add frames below to see preview</div>
               </div>
+            ) : (
+              <div className="border-2 border-black" style={{ width: '400px', height: '400px', backgroundColor: 'var(--theme-bg-light)' }}>
+                <AnimatedTilePreview 
+                  frameIds={currentTile.frameIds} 
+                  fps={currentTile.fps || 10}
+                  getTile={getTile}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Bottom Strip - Frames */}
+        <div className="h-40 border-t-2 border-black p-3" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
+          <div className="flex gap-2 h-full overflow-x-auto">
+            {(currentTile.frameIds || []).map((frameId, index) => {
+              const tile = getTile(frameId);
+              if (!tile) return null;
+              
+              return (
+                <div
+                  key={index}
+                  className={`relative flex-shrink-0 border-2 cursor-pointer ${
+                    selectedFrameIndex === index ? 'border-blue-500 border-4' : 'border-black'
+                  }`}
+                  style={{ 
+                    width: '120px',
+                    height: '120px',
+                    backgroundColor: 'var(--theme-bg-light)'
+                  }}
+                  onClick={() => setSelectedFrameIndex(index)}
+                >
+                  <canvas
+                    ref={(canvas) => {
+                      if (!canvas) return;
+                      const ctx = canvas.getContext('2d');
+                      if (!ctx) return;
+
+                      canvas.width = tile.size;
+                      canvas.height = tile.size;
+
+                      for (let y = 0; y < tile.size; y++) {
+                        for (let x = 0; x < tile.size; x++) {
+                          const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
+                          ctx.fillStyle = color;
+                          ctx.fillRect(x, y, 1, 1);
+                        }
+                      }
+                    }}
+                    className="w-full h-full"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
+                  <GameButton
+                    icon
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFrameFromAnimatedTile(currentTile.id, index);
+                      if (selectedFrameIndex === index) setSelectedFrameIndex(null);
+                    }}
+                    className="absolute top-1 right-1"
+                    style={{ padding: '2px' }}
+                    title="Remove frame"
+                  >
+                    <XMarkIcon className="w-3 h-3" />
+                  </GameButton>
+                </div>
+              );
+            })}
+            
+            {/* Add Frame Button */}
+            <div
+              className="flex-shrink-0 border-2 border-dashed border-black flex items-center justify-center cursor-pointer hover:bg-[var(--theme-bg-light)] transition-colors"
+              style={{ 
+                width: '120px',
+                height: '120px',
+                backgroundColor: 'rgba(255, 255, 0, 0.2)'
+              }}
+              onClick={() => setAvailableTilesMenuOpen(true)}
+              title="Add frame"
+            >
+              <PlusIcon className="w-12 h-12 opacity-50" />
             </div>
           </div>
         </div>
@@ -617,13 +632,17 @@ export default function TileStudio() {
         onOpenChange={setAvailableTilesMenuOpen}
       >
         <GameSection title="Available Tiles">
-          {basicTiles.length === 0 ? (
+          {allAvailableTiles.length === 0 ? (
             <div className="text-sm opacity-60 text-center py-4">
-              <p>No basic tiles available</p>
+              <p>No tiles available</p>
               <Link to="/tile-editor" className="underline">Create tiles in Tile Editor</Link>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <>
+              {basicTiles.length > 0 && (
+                <div className="mb-4">
+                  <div className="text-xs font-bold mb-2 opacity-70">BASIC TILES</div>
+                  <div className="grid grid-cols-3 gap-2">
               {basicTiles.map(tile => (
                 <div
                   key={tile.id}
@@ -632,12 +651,12 @@ export default function TileStudio() {
                     backgroundColor: 'var(--theme-bg-light)',
                     boxShadow: '2px 2px 0 #000'
                   }}
-                  onClick={() => {
-                    if (currentAnimatedTile) {
-                      addFrameToAnimatedTile(currentAnimatedTile.id, tile.id);
-                      setAvailableTilesMenuOpen(false);
-                    }
-                  }}
+                        onClick={() => {
+                          if (currentAnimatedTile) {
+                            addFrameToAnimatedTile(currentAnimatedTile.id, tile.id);
+                            setAvailableTilesMenuOpen(false);
+                          }
+                        }}
                   title={tile.name}
                 >
                   <canvas
@@ -667,6 +686,44 @@ export default function TileStudio() {
                 </div>
               ))}
             </div>
+                </div>
+              )}
+              
+              {publishedAnimatedTiles.length > 0 && (
+                <div>
+                  <div className="text-xs font-bold mb-2 opacity-70">ANIMATED TILES</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {publishedAnimatedTiles.map(tile => (
+                      <div
+                        key={tile.id}
+                        className="border-2 border-black cursor-pointer p-2 transition-all hover:scale-105 relative"
+                        style={{ 
+                          backgroundColor: 'var(--theme-bg-light)',
+                          boxShadow: '2px 2px 0 #000'
+                        }}
+                        onClick={() => {
+                          if (currentAnimatedTile) {
+                            addFrameToAnimatedTile(currentAnimatedTile.id, tile.id);
+                            setAvailableTilesMenuOpen(false);
+                          }
+                        }}
+                        title={tile.name}
+                      >
+                        <div className="aspect-square">
+                          <AnimatedTilePreview 
+                            frameIds={tile.animationFrames || []} 
+                            fps={tile.animationFps || 10}
+                            getTile={getTile}
+                          />
+                        </div>
+                        <div className="text-xs mt-1 text-center font-bold truncate">{tile.name}</div>
+                        <FilmIcon className="w-3 h-3 absolute top-1 right-1 opacity-50" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </GameSection>
       </GameMenu>
@@ -696,11 +753,14 @@ export default function TileStudio() {
             <span className="text-xs opacity-50">(Press F to toggle)</span>
           </div>
           
-          <div className="relative">
-            <GameButton onClick={() => setNewMenuOpen(!newMenuOpen)}>
+          <div 
+            className="relative"
+            onMouseEnter={() => setNewMenuOpen(true)}
+            onMouseLeave={() => setNewMenuOpen(false)}
+          >
+            <GameButton>
               <PlusIcon className="w-5 h-5" />
               <span className="ml-2">New</span>
-              <ChevronDownIcon className="w-4 h-4 ml-1" />
             </GameButton>
             
             {newMenuOpen && (
@@ -710,14 +770,20 @@ export default function TileStudio() {
               >
                 <div
                   className="p-3 cursor-pointer hover:bg-[var(--theme-bg-medium)] border-b border-black"
-                  onClick={createNewAnimatedTile}
+                  onClick={() => {
+                    createNewAnimatedTile();
+                    setCurrentTool('animated');
+                  }}
                 >
                   <div className="font-bold">Animated</div>
                   <div className="text-xs opacity-70">Frame-by-frame animation</div>
               </div>
                 <div
                   className="p-3 cursor-pointer hover:bg-[var(--theme-bg-medium)]"
-                  onClick={createNewCompositeTile}
+                  onClick={() => {
+                    createNewCompositeTile();
+                    setCurrentTool('composite');
+                  }}
                 >
                   <div className="font-bold">Composite</div>
                   <div className="text-xs opacity-70">Multi-tile structure</div>
@@ -730,6 +796,15 @@ export default function TileStudio() {
         {/* Tool Content */}
         {currentTool === 'animated' ? renderAnimatedTool() : renderCompositeTool()}
       </div>
+      
+      {/* Toast Notification */}
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type="success"
+          onClose={() => setToastMessage(null)}
+        />
+      )}
     </div>
   );
 }
