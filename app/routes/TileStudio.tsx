@@ -29,13 +29,21 @@ export function meta() {
 // Tool types in Tile Studio
 type StudioTool = 'animated' | 'composite';
 
+// Animated tile frame structure with unique ID for proper React key tracking
+interface AnimatedFrame {
+  id: string; // Unique ID for this frame instance
+  tileId: string; // ID of the tile to display
+}
+
 // Animated tile structure
 interface AnimatedTile {
   id: string;
   name: string;
-  frameIds: string[]; // IDs of tiles to use as frames
+  frames: AnimatedFrame[]; // Frames with unique IDs
   fps: number; // Animation speed
   isPublished?: boolean;
+  // Legacy support
+  frameIds?: string[]; // Will be migrated to frames
 }
 
 // Composite tile structure - tiles positioned relative to a pivot
@@ -102,6 +110,43 @@ export default function TileStudio() {
     };
   }, []);
 
+  // Migrate old frameIds to new frames structure and clean up invalid frames
+  useEffect(() => {
+    const needsMigration = animatedTiles.some(at => at.frameIds && !at.frames);
+    const needsCleanup = animatedTiles.some(at => at.frames && at.frames.some(f => !getTile(f.tileId)));
+    
+    if (needsMigration || needsCleanup) {
+      setAnimatedTiles(prev => prev.map(at => {
+        // Migrate from frameIds to frames
+        if (at.frameIds && !at.frames) {
+          return {
+            ...at,
+            frames: at.frameIds
+              .filter(tileId => getTile(tileId)) // Filter out deleted tiles
+              .map(tileId => ({
+                id: `frame_${Date.now()}_${Math.random()}`,
+                tileId
+              })),
+            frameIds: undefined
+          };
+        }
+        
+        // Clean up invalid frames
+        if (at.frames) {
+          const validFrames = at.frames.filter(f => getTile(f.tileId));
+          if (validFrames.length !== at.frames.length) {
+            return {
+              ...at,
+              frames: validFrames
+            };
+          }
+        }
+        
+        return at;
+      }));
+    }
+  }, [animatedTiles, getTile]);
+
   // Save animated tiles to localStorage
   useEffect(() => {
     if (animatedTiles) {
@@ -155,7 +200,7 @@ export default function TileStudio() {
     const newTile: AnimatedTile = {
       id: `animated_${Date.now()}`,
       name: `Animated Tile ${(animatedTiles?.length || 0) + 1}`,
-      frameIds: [],
+      frames: [],
       fps: 10,
       isPublished: false
     };
@@ -203,16 +248,16 @@ export default function TileStudio() {
     }
     
     // Check if this is the first frame
-    if (!animatedTile.frameIds || animatedTile.frameIds.length === 0) {
+    if (!animatedTile.frames || animatedTile.frames.length === 0) {
       // First frame - just add it
       setAnimatedTiles(prev => (prev || []).map(at => 
-        at.id === id ? { ...at, frameIds: [tileId] } : at
+        at.id === id ? { ...at, frames: [{ id: `frame_${Date.now()}`, tileId }] } : at
       ));
       return;
     }
     
     // Get the first frame to check dimensions
-    const firstFrame = getTile(animatedTile.frameIds[0]);
+    const firstFrame = getTile(animatedTile.frames[0].tileId);
     if (!firstFrame) {
       setToastMessage('First frame not found');
       return;
@@ -234,21 +279,27 @@ export default function TileStudio() {
     }
     
     setAnimatedTiles(prev => (prev || []).map(at => 
-      at.id === id ? { ...at, frameIds: [...(at.frameIds || []), tileId] } : at
+      at.id === id ? { ...at, frames: [...(at.frames || []), { id: `frame_${Date.now()}_${Math.random()}`, tileId }] } : at
     ));
   };
   
-  const removeFrameFromAnimatedTile = (id: string, index: number) => {
+  const removeFrameFromAnimatedTile = (id: string, frameId: string) => {
     setAnimatedTiles(prev => (prev || []).map(at => 
       at.id === id 
-        ? { ...at, frameIds: (at.frameIds || []).filter((_, i) => i !== index) } 
+        ? { ...at, frames: (at.frames || []).filter(f => f.id !== frameId) } 
         : at
     ));
+    
+    // Reset selection when removing a frame
+    setSelectedFrameIndex(null);
   };
   
   const publishAnimatedTile = (id: string) => {
     const animatedTile = animatedTiles?.find(at => at.id === id);
     if (!animatedTile) return;
+    
+    // Extract tileIds from frames
+    const frameIds = animatedTile.frames.map(f => f.tileId);
     
     // Create the published complex tile in the main tiles system
     saveTile(
@@ -258,7 +309,7 @@ export default function TileStudio() {
       null,
       id,
       true, // isComplex
-      animatedTile.frameIds,
+      frameIds,
       animatedTile.fps
     );
     
@@ -335,7 +386,7 @@ export default function TileStudio() {
 
   // Helper function to convert AnimatedTile to Tile format for rendering
   const getAnimatedTileAsTile = (animatedTile: AnimatedTile): any => {
-    if (!animatedTile.frameIds || animatedTile.frameIds.length === 0) {
+    if (!animatedTile.frames || animatedTile.frames.length === 0) {
       // Return empty tile if no frames
       return {
         id: animatedTile.id,
@@ -351,13 +402,16 @@ export default function TileStudio() {
       };
     }
     
+    // Extract tileIds from frames
+    const frameIds = animatedTile.frames.map(f => f.tileId);
+    
     return {
       id: animatedTile.id,
       name: animatedTile.name,
       grid: [[]], // Not used for animated tiles
       size: 16,
       isComplex: true,
-      animationFrames: animatedTile.frameIds,
+      animationFrames: frameIds,
       animationFps: animatedTile.fps,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -448,13 +502,13 @@ export default function TileStudio() {
         <GameSection title="Draft Tiles">
           <div className="mb-4">
             <div className="text-xs font-bold mb-2 opacity-70">ANIMATED TILES</div>
-            {(!animatedTiles || animatedTiles.length === 0 || animatedTiles.filter(at => at.frameIds && at.frameIds.length > 0).length === 0) ? (
+            {(!animatedTiles || animatedTiles.length === 0 || animatedTiles.filter(at => at.frames && at.frames.length > 0).length === 0) ? (
               <div className="text-sm opacity-60 text-center py-2">
                 No animated tiles yet
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 pr-2 pb-2">
-                {animatedTiles.filter(at => at.frameIds && at.frameIds.length > 0).map(at => {
+                {animatedTiles.filter(at => at.frames && at.frames.length > 0).map(at => {
                   const tileData = getAnimatedTileAsTile(at);
                   return (
                     <TileItem
@@ -654,7 +708,7 @@ export default function TileStudio() {
               <div className="flex gap-2 pt-2 border-t border-black/20">
                 <button
                   onClick={() => {
-                    if (!currentAnimatedTile.frameIds || currentAnimatedTile.frameIds.length === 0) {
+                    if (!currentAnimatedTile.frames || currentAnimatedTile.frames.length === 0) {
                       setToastMessage('Cannot save: Add at least 1 frame!');
                       return;
                     }
@@ -663,7 +717,7 @@ export default function TileStudio() {
                   className="flex-1 px-3 py-1 text-xs border-2 border-black bg-[var(--theme-bg-light)] hover:bg-[var(--theme-accent)] transition-colors"
                   style={{ 
                     boxShadow: '2px 2px 0 #000',
-                    opacity: (!currentAnimatedTile.frameIds || currentAnimatedTile.frameIds.length === 0) ? 0.5 : 1
+                    opacity: (!currentAnimatedTile.frames || currentAnimatedTile.frames.length === 0) ? 0.5 : 1
                   }}
                   title="Save (Ctrl+S)"
                 >
@@ -677,7 +731,10 @@ export default function TileStudio() {
                     const newTile: AnimatedTile = {
                       id: `animated_${Date.now()}`,
                       name: `${currentAnimatedTile.name} Copy`,
-                      frameIds: [...(currentAnimatedTile.frameIds || [])],
+                      frames: (currentAnimatedTile.frames || []).map(f => ({
+                        id: `frame_${Date.now()}_${Math.random()}`,
+                        tileId: f.tileId
+                      })),
                       fps: currentAnimatedTile.fps,
                       isPublished: false
                     };
@@ -713,7 +770,7 @@ export default function TileStudio() {
                       setToastMessage('Unpublished from Tiles!');
                     } else {
                       // Publish
-                      if (!currentAnimatedTile.frameIds || currentAnimatedTile.frameIds.length === 0) {
+                      if (!currentAnimatedTile.frames || currentAnimatedTile.frames.length === 0) {
                         setToastMessage('Cannot publish: Add at least 1 frame!');
                         return;
                       }
@@ -728,7 +785,7 @@ export default function TileStudio() {
                   }`}
                   style={{ 
                     boxShadow: '2px 2px 0 #000',
-                    opacity: (!currentAnimatedTile.isPublished && (!currentAnimatedTile.frameIds || currentAnimatedTile.frameIds.length === 0)) ? 0.5 : 1
+                    opacity: (!currentAnimatedTile.isPublished && (!currentAnimatedTile.frames || currentAnimatedTile.frames.length === 0)) ? 0.5 : 1
                   }}
                   title={currentAnimatedTile.isPublished ? 'Click to unpublish' : 'Publish'}
                 >
@@ -751,7 +808,7 @@ export default function TileStudio() {
               <div className="text-sm">Create or select a tile to begin</div>
             </div>
           ) : currentTool === 'animated' && currentAnimatedTile ? (
-            !currentAnimatedTile.frameIds || currentAnimatedTile.frameIds.length === 0 ? (
+            !currentAnimatedTile.frames || currentAnimatedTile.frames.length === 0 ? (
               <div className="text-center opacity-50">
                 <div className="text-xl mb-2">No frames yet</div>
                 <div className="text-sm">Add frames from the right tiles menu</div>
@@ -759,7 +816,7 @@ export default function TileStudio() {
             ) : (
               <div className="border-2 border-black" style={{ width: '400px', height: '400px', backgroundColor: 'var(--theme-bg-light)', boxShadow: '8px 8px 0 #000' }}>
                 <AnimatedTilePreview 
-                  frameIds={currentAnimatedTile.frameIds} 
+                  frameIds={currentAnimatedTile.frames.map(f => f.tileId)} 
                   fps={currentAnimatedTile.fps || 10}
                   getTile={getTile}
                 />
@@ -795,13 +852,13 @@ export default function TileStudio() {
                 height: '160px'
               }}
             >
-              {currentAnimatedTile.frameIds && currentAnimatedTile.frameIds.length > 0 ? (
-                currentAnimatedTile.frameIds.map((frameId, index) => {
-                  const tile = getTile(frameId);
+              {currentAnimatedTile.frames && currentAnimatedTile.frames.length > 0 ? (
+                currentAnimatedTile.frames.map((frame, index) => {
+                  const tile = getTile(frame.tileId);
                     if (!tile) return null;
 
                     return (
-                    <div key={index} className="relative flex-shrink-0 p-1">
+                    <div key={frame.id} className="relative flex-shrink-0 p-1">
                       <TileItem
                         tile={tile}
                         size="small"
@@ -814,8 +871,7 @@ export default function TileStudio() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          removeFrameFromAnimatedTile(currentAnimatedTile.id, index);
-                          if (selectedFrameIndex === index) setSelectedFrameIndex(null);
+                          removeFrameFromAnimatedTile(currentAnimatedTile.id, frame.id);
                         }}
                         className="absolute w-6 h-6 flex items-center justify-center border-2 border-black hover:translate-x-[1px] hover:translate-y-[1px] transition-all active:translate-x-[2px] active:translate-y-[2px] z-10"
                         style={{ 
