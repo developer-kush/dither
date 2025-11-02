@@ -55,6 +55,35 @@ export function useTiles() {
     }
   }, []);
 
+  // One-time migration: Add dims labels to all tiles that don't have them
+  useEffect(() => {
+    if (!isLoaded || tiles.length === 0) return;
+
+    let needsUpdate = false;
+    const updatedTiles = tiles.map(tile => {
+      // Skip complex tiles (animated/composite)
+      if (tile.isComplex) return tile;
+      
+      const labels = tile.labels || [];
+      const dimsLabel = `dims:${tile.size}x${tile.size}`;
+      
+      // Check if tile already has a dims label
+      const hasDimsLabel = labels.some(label => label.startsWith('dims:'));
+      
+      if (!hasDimsLabel) {
+        needsUpdate = true;
+        return { ...tile, labels: [...labels, dimsLabel], updatedAt: Date.now() };
+      }
+      
+      return tile;
+    });
+
+    if (needsUpdate) {
+      console.log('🔄 Migration: Adding dimension labels to existing tiles');
+      setTiles(updatedTiles);
+    }
+  }, [isLoaded, tiles.length]);
+
   // Save tiles to localStorage whenever they change
   useEffect(() => {
     if (isLoaded) {
