@@ -29,36 +29,6 @@ export function meta() {
 // Tool types in Tile Studio
 type StudioTool = 'animated' | 'composite';
 
-// Animated tile frame structure with unique ID for proper React key tracking
-interface AnimatedFrame {
-  id: string; // Unique ID for this frame instance
-  tileId: string; // ID of the tile to display
-}
-
-// Animated tile structure
-interface AnimatedTile {
-  id: string;
-  name: string;
-  frames: AnimatedFrame[]; // Frames with unique IDs
-  fps: number; // Animation speed
-  isPublished?: boolean;
-  // Legacy support
-  frameIds?: string[]; // Will be migrated to frames
-}
-
-// Composite tile structure - tiles positioned relative to a pivot
-interface CompositeTile {
-  id: string;
-  name: string;
-  tiles: {
-    tileId: string;
-    offsetX: number; // Grid position relative to pivot (0,0)
-    offsetY: number; // Grid position relative to pivot (0,0)
-    isPivot: boolean; // The central/origin tile
-  }[];
-  isPublished?: boolean;
-}
-
 // Tool state - remembers which tile was being worked on for each tool
 interface ToolState {
   animated: {
@@ -70,7 +40,7 @@ interface ToolState {
 }
 
 export default function TileStudio() {
-  const { tiles, getTile, saveTile, folders, publishTile, unpublishTile } = useTiles();
+  const { tiles, getTile, saveTile, deleteTile, renameTile, folders, publishTile, unpublishTile, addLabelToTile } = useTiles();
   
   // Enable route cycling with Shift+Tab
   useRouteCycling();
@@ -78,13 +48,16 @@ export default function TileStudio() {
   // Current tool
   const [currentTool, setCurrentTool] = useState<StudioTool>('animated');
   
-  // Load animated tiles from localStorage
-  const [animatedTilesData, setAnimatedTilesData] = useLocalStorage<AnimatedTile[]>('animated-tiles', []);
-  const [animatedTiles, setAnimatedTiles] = useState<AnimatedTile[]>(animatedTilesData || []);
+  // Filter tiles for studio (all complex tiles, published or unpublished)
+  const animatedTiles = tiles.filter(t => 
+    t.isComplex && 
+    t.labels?.includes('subtype:animated')
+  );
   
-  // Load composite tiles from localStorage
-  const [compositeTilesData, setCompositeTilesData] = useLocalStorage<CompositeTile[]>('composite-tiles', []);
-  const [compositeTiles, setCompositeTiles] = useState<CompositeTile[]>(compositeTilesData || []);
+  const compositeTiles = tiles.filter(t => 
+    t.isComplex && 
+    t.labels?.includes('subtype:composite')
+  );
   
   // Tool state persistence
   const [toolStateData, setToolStateData] = useLocalStorage<ToolState>('tile-studio-tool-state', {
@@ -109,81 +82,6 @@ export default function TileStudio() {
       document.documentElement.setAttribute('data-theme', 'green');
     };
   }, []);
-
-  // Migrate old frameIds to new frames structure and clean up invalid frames
-  useEffect(() => {
-    const needsMigration = animatedTiles.some(at => at.frameIds && !at.frames);
-    const needsCleanup = animatedTiles.some(at => at.frames && at.frames.some(f => !getTile(f.tileId)));
-    
-    if (needsMigration || needsCleanup) {
-      setAnimatedTiles(prev => prev.map(at => {
-        // Migrate from frameIds to frames
-        if (at.frameIds && !at.frames) {
-          return {
-            ...at,
-            frames: at.frameIds
-              .filter(tileId => getTile(tileId)) // Filter out deleted tiles
-              .map(tileId => ({
-                id: `frame_${Date.now()}_${Math.random()}`,
-                tileId
-              })),
-            frameIds: undefined
-          };
-        }
-        
-        // Clean up invalid frames
-        if (at.frames) {
-          const validFrames = at.frames.filter(f => getTile(f.tileId));
-          if (validFrames.length !== at.frames.length) {
-            return {
-              ...at,
-              frames: validFrames
-            };
-          }
-        }
-        
-        return at;
-      }));
-    }
-  }, [animatedTiles, getTile]);
-
-  // Auto-save animated tiles to localStorage
-  useEffect(() => {
-    if (animatedTiles) {
-      setAnimatedTilesData(animatedTiles);
-    }
-  }, [animatedTiles]);
-  
-  // Auto-save composite tiles to localStorage
-  useEffect(() => {
-    if (compositeTiles) {
-    setCompositeTilesData(compositeTiles);
-    }
-  }, [compositeTiles]);
-  
-  // Ensure currentTileId is valid (tile exists in state)
-  useEffect(() => {
-    if (toolState.animated.currentTileId) {
-      const tileExists = animatedTiles?.some(at => at.id === toolState.animated.currentTileId);
-      if (!tileExists) {
-        // Clear invalid tile ID
-        setToolState(prev => ({
-          ...prev,
-          animated: { currentTileId: null }
-        }));
-      }
-    }
-    if (toolState.composite.currentTileId) {
-      const tileExists = compositeTiles?.some(ct => ct.id === toolState.composite.currentTileId);
-      if (!tileExists) {
-        // Clear invalid tile ID
-        setToolState(prev => ({
-          ...prev,
-          composite: { currentTileId: null }
-        }));
-      }
-    }
-  }, [animatedTiles, compositeTiles, toolState.animated.currentTileId, toolState.composite.currentTileId]);
 
   // Save tool state to localStorage
   useEffect(() => {
@@ -214,32 +112,40 @@ export default function TileStudio() {
 
   // === ANIMATED TILE FUNCTIONS ===
   
-  const getCurrentAnimatedTile = (): AnimatedTile | null => {
+  const getCurrentAnimatedTile = () => {
     const currentId = toolState.animated.currentTileId;
-    if (!currentId || !animatedTiles) return null;
-    return animatedTiles.find(t => t.id === currentId) || null;
+    if (!currentId) return null;
+    return getTile(currentId) || null;
   };
   
   const createNewAnimatedTile = () => {
-    const newTile: AnimatedTile = {
-      id: `animated_${Date.now()}`,
-      name: `Animated Tile ${(animatedTiles?.length || 0) + 1}`,
-      frames: [],
-      fps: 10,
-      isPublished: false
-    };
-    setAnimatedTiles(prev => [...(prev || []), newTile]);
+    const tileId = `animated_${Date.now()}`;
+    const tileName = `Animated Tile ${animatedTiles.length + 1}`;
+    
+    // Create a new animated tile in the main tiles system
+    saveTile(
+      tileName,
+      [[]], // Empty grid for complex tiles
+      16, // Default size
+      null, // No folder
+      tileId,
+      true, // isComplex
+      [], // Empty animationFrames initially
+      10, // Default FPS
+      ['subtype:animated', 'dims:1x1'] // System labels
+    );
+    
     setToolState(prev => ({
       ...prev,
-      animated: { currentTileId: newTile.id }
+      animated: { currentTileId: tileId }
     }));
-    setEditingName(newTile.name);
+    setEditingName(tileName);
     setNewMenuOpen(false);
   };
   
   const deleteAnimatedTile = (id: string) => {
     if (window.confirm('Delete this animated tile?')) {
-      setAnimatedTiles(prev => (prev || []).filter(t => t.id !== id));
+      deleteTile(id);
       if (toolState.animated.currentTileId === id) {
         setToolState(prev => ({
           ...prev,
@@ -250,15 +156,24 @@ export default function TileStudio() {
   };
   
   const updateAnimatedTileName = (id: string, name: string) => {
-    setAnimatedTiles(prev => (prev || []).map(at => 
-      at.id === id ? { ...at, name } : at
-    ));
+    renameTile(id, name);
   };
   
   const updateAnimatedTileFPS = (id: string, fps: number) => {
-    setAnimatedTiles(prev => (prev || []).map(at => 
-      at.id === id ? { ...at, fps } : at
-    ));
+    const tile = getTile(id);
+    if (!tile) return;
+    // Update tile with new FPS
+    saveTile(
+      tile.name,
+      tile.grid,
+      tile.size,
+      tile.folderId,
+      id,
+      true,
+      tile.animationFrames,
+      fps,
+      tile.labels
+    );
   };
   
   const addFrameToAnimatedTile = (id: string, tileId: string) => {
