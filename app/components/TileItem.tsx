@@ -112,13 +112,14 @@ export function TileItem({
 
   return (
     <div
-      className={`relative border-2 border-black cursor-pointer transition-all hover:scale-105 ${
+      className={`relative border-2 cursor-pointer transition-all hover:scale-105 ${
         selected ? 'ring-4 ring-blue-500' : ''
       } ${className}`}
       style={{
         width: containerWidth,
         backgroundColor: '#c0c0c0',
         boxShadow: '4px 4px 0 #000',
+        borderColor: '#000',
         overflow: showDelete ? 'visible' : 'hidden',
         ...style
       }}
