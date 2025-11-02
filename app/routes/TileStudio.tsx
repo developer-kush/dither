@@ -176,92 +176,76 @@ export default function TileStudio() {
     );
   };
   
-  const addFrameToAnimatedTile = (id: string, tileId: string) => {
-    const animatedTile = animatedTiles?.find(at => at.id === id);
+  const addFrameToAnimatedTile = (id: string, newTileId: string) => {
+    const animatedTile = getTile(id);
     if (!animatedTile) return;
     
-    const newTile = getTile(tileId);
+    const newTile = getTile(newTileId);
     if (!newTile) {
       setToastMessage('Tile not found');
       return;
     }
     
-    // Check if this is the first frame
-    if (!animatedTile.frames || animatedTile.frames.length === 0) {
-      // First frame - just add it
-      setAnimatedTiles(prev => (prev || []).map(at => 
-        at.id === id ? { ...at, frames: [{ id: `frame_${Date.now()}`, tileId }] } : at
-      ));
-      return;
+    const currentFrames = animatedTile.animationFrames || [];
+    
+    // Validate dimensions if there are existing frames
+    if (currentFrames.length > 0) {
+      const firstFrame = getTile(currentFrames[0]);
+      if (firstFrame) {
+        const getFirstDimsLabel = (labels?: string[]) => {
+          if (!labels) return null;
+          return labels.find(l => l.startsWith('dims:'));
+        };
+        
+        const firstFrameDims = getFirstDimsLabel(firstFrame.labels);
+        const newFrameDims = getFirstDimsLabel(newTile.labels);
+        
+        if (firstFrameDims !== newFrameDims) {
+          setToastMessage(`Frame dimensions must match! First frame is ${firstFrameDims || 'unknown'}, selected frame is ${newFrameDims || 'unknown'}`);
+          return;
+        }
+      }
     }
     
-    // Get the first frame to check dimensions
-    const firstFrame = getTile(animatedTile.frames[0].tileId);
-    if (!firstFrame) {
-      setToastMessage('First frame not found');
-      return;
-    }
-    
-    // Extract dimensions from labels
-    const getFirstDimsLabel = (labels?: string[]) => {
-      if (!labels) return null;
-      return labels.find(l => l.startsWith('dims:'));
-    };
-    
-    const firstFrameDims = getFirstDimsLabel(firstFrame.labels);
-    const newFrameDims = getFirstDimsLabel(newTile.labels);
-    
-    // Validate dimensions match
-    if (firstFrameDims !== newFrameDims) {
-      setToastMessage(`Frame dimensions must match! First frame is ${firstFrameDims || 'unknown'}, selected frame is ${newFrameDims || 'unknown'}`);
-      return;
-    }
-    
-    setAnimatedTiles(prev => (prev || []).map(at => 
-      at.id === id ? { ...at, frames: [...(at.frames || []), { id: `frame_${Date.now()}_${Math.random()}`, tileId }] } : at
-    ));
+    // Add the new frame
+    saveTile(
+      animatedTile.name,
+      animatedTile.grid,
+      animatedTile.size,
+      animatedTile.folderId,
+      id,
+      true,
+      [...currentFrames, newTileId],
+      animatedTile.animationFps,
+      animatedTile.labels
+    );
   };
   
-  const removeFrameFromAnimatedTile = (id: string, frameId: string) => {
-    setAnimatedTiles(prev => (prev || []).map(at => 
-      at.id === id 
-        ? { ...at, frames: (at.frames || []).filter(f => f.id !== frameId) } 
-        : at
-    ));
+  const removeFrameFromAnimatedTile = (id: string, frameIndex: number) => {
+    const animatedTile = getTile(id);
+    if (!animatedTile) return;
+    
+    const currentFrames = animatedTile.animationFrames || [];
+    const newFrames = currentFrames.filter((_, i) => i !== frameIndex);
+    
+    saveTile(
+      animatedTile.name,
+      animatedTile.grid,
+      animatedTile.size,
+      animatedTile.folderId,
+      id,
+      true,
+      newFrames,
+      animatedTile.animationFps,
+      animatedTile.labels
+    );
     
     // Reset selection when removing a frame
     setSelectedFrameIndex(null);
   };
   
   const publishAnimatedTile = (id: string) => {
-    const animatedTile = animatedTiles?.find(at => at.id === id);
-    if (!animatedTile) return;
-    
-    // Extract tileIds from frames
-    const frameIds = animatedTile.frames.map(f => f.tileId);
-    
-    // Get the size from the first frame to ensure consistency
-    const firstFrameTile = getTile(frameIds[0]);
-    const tileSize = firstFrameTile?.size || 16;
-    
-    // Create the published complex tile in the main tiles system
-    saveTile(
-      animatedTile.name,
-      [[]], // Empty grid for complex tiles
-      tileSize,
-      null,
-      id,
-      true, // isComplex
-      frameIds,
-      animatedTile.fps
-    );
-    
-    // Mark as published in animated tiles list
-    setAnimatedTiles(prev => (prev || []).map(at => 
-      at.id === id ? { ...at, isPublished: true } : at
-    ));
-    
-    // Publish the tile
+    // Just publish the tile - it's already in the main tiles system
     publishTile(id);
   };
 
