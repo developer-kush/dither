@@ -301,11 +301,15 @@ export default function TileStudio() {
     // Extract tileIds from frames
     const frameIds = animatedTile.frames.map(f => f.tileId);
     
+    // Get the size from the first frame to ensure consistency
+    const firstFrameTile = getTile(frameIds[0]);
+    const tileSize = firstFrameTile?.size || 16;
+    
     // Create the published complex tile in the main tiles system
     saveTile(
       animatedTile.name,
       [[]], // Empty grid for complex tiles
-      16,
+      tileSize,
       null,
       id,
       true, // isComplex
@@ -405,11 +409,15 @@ export default function TileStudio() {
     // Extract tileIds from frames
     const frameIds = animatedTile.frames.map(f => f.tileId);
     
+    // Get the size from the first frame to ensure consistency
+    const firstFrameTile = getTile(frameIds[0]);
+    const tileSize = firstFrameTile?.size || 16;
+    
     return {
       id: animatedTile.id,
       name: animatedTile.name,
       grid: [[]], // Not used for animated tiles
-      size: 16,
+      size: tileSize,
       isComplex: true,
       animationFrames: frameIds,
       animationFps: animatedTile.fps,

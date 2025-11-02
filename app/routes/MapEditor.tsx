@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, createContext, useContext } from "react";
 import { Link } from "react-router";
 import { useTiles } from "../hooks/useTiles";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -26,8 +26,15 @@ export function meta() {
   ];
 }
 
+// Global animation context for synchronized animations
+const AnimationContext = createContext<number>(0);
+
+function useAnimationTick() {
+  return useContext(AnimationContext);
+}
+
 // Component for rendering animated complex tiles with synchronized animation
-const AnimatedTileImage = ({ 
+const AnimatedTileImage = React.memo(({ 
   tile, 
   transform, 
   getTileImage,
@@ -42,21 +49,8 @@ const AnimatedTileImage = ({
   className?: string; 
   style?: React.CSSProperties;
 }) => {
-  const [, setTick] = useState(0);
-  
-  useEffect(() => {
-    if (!tile.isComplex || !tile.animationFrames || tile.animationFrames.length <= 1) {
-      return;
-    }
-
-    const fps = tile.animationFps || 8;
-    // Update every frame to keep animation smooth
-    const interval = setInterval(() => {
-      setTick(t => t + 1);
-    }, 1000 / fps);
-
-    return () => clearInterval(interval);
-  }, [tile]);
+  // Use global animation tick for synchronized animations
+  const animationTick = useAnimationTick();
 
   // Calculate frame index based on global time - this synchronizes all animations
   const getFrameIndex = () => {
@@ -93,7 +87,13 @@ const AnimatedTileImage = ({
       style={style}
     />
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison - only re-render if tile ID or transform changes
+  return prevProps.tile.id === nextProps.tile.id &&
+         prevProps.transform.rotation === nextProps.transform.rotation &&
+         prevProps.transform.flipH === nextProps.transform.flipH &&
+         prevProps.transform.flipV === nextProps.transform.flipV;
+});
 
 interface MapCell {
   tileId: string | null;
@@ -121,6 +121,17 @@ type Tool = 'pen' | 'eraser';
 
 export default function MapEditor() {
   const { tiles: allTiles, getTile } = useTiles();
+  
+  // Global animation tick for synchronized animations - updates at 60fps
+  const [animationTick, setAnimationTick] = useState(0);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAnimationTick(tick => tick + 1);
+    }, 1000 / 60); // 60fps for smooth animations
+    
+    return () => clearInterval(interval);
+  }, []);
   
   // Enable route cycling with Shift+Tab
   useRouteCycling();
@@ -348,7 +359,10 @@ export default function MapEditor() {
         } else {
           // Pen mode - draw tile on active layer
           if (!selectedTileId) return layer;
-          newMapData.set(key, { tileId: selectedTileId, transform: { ...activeTransform } });
+          newMapData.set(key, { 
+            tileId: selectedTileId, 
+            transform: { ...activeTransform }
+          });
         }
         
         return { ...layer, mapData: newMapData };
@@ -371,6 +385,9 @@ export default function MapEditor() {
 
     const tile = getTile(tileId);
     if (!tile) return null;
+    
+    // Don't render complex tiles directly - they should be rendered via their frames
+    if (tile.isComplex) return null;
 
     // Create a canvas to render the tile
     const canvas = document.createElement('canvas');
@@ -618,11 +635,12 @@ export default function MapEditor() {
   };
 
   return (
-    <div className="w-full h-screen flex" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
-      {/* Navbar */}
-      <NavBar 
-        title="Map Editor"
-      />
+    <AnimationContext.Provider value={animationTick}>
+      <div className="w-full h-screen flex" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
+        {/* Navbar */}
+        <NavBar 
+          title="Map Editor"
+        />
 
       {/* Right Menu - Tools */}
       <div 
@@ -976,14 +994,21 @@ export default function MapEditor() {
                   height: '96px'
                 }}
               >
-                {getTileImage(selectedTileId, activeTransform) && (
-                  <img
-                    src={getTileImage(selectedTileId, activeTransform)!}
-                    alt="active tile"
-                    className="w-full h-full"
-                    style={{ imageRendering: 'pixelated' }}
-                  />
-                )}
+                {(() => {
+                  const tile = getTile(selectedTileId);
+                  if (!tile) return null;
+                  
+                  return (
+                    <AnimatedTileImage
+                      tile={tile}
+                      transform={activeTransform}
+                      getTileImage={getTileImage}
+                      getTile={getTile}
+                      className="w-full h-full"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
+                  );
+                })()}
               </div>
               <div className="text-xs mt-2 text-center truncate max-w-[96px]">
                 {tiles.find(t => t.id === selectedTileId)?.name || 'Unknown'}
@@ -1139,6 +1164,7 @@ export default function MapEditor() {
         </div>
       </div>
     </div>
+    </AnimationContext.Provider>
   );
 }
 
