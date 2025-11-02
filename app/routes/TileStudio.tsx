@@ -42,7 +42,6 @@ interface AnimatedTile {
   frames: AnimatedFrame[]; // Frames with unique IDs
   fps: number; // Animation speed
   isPublished?: boolean;
-  isSaved?: boolean; // Track if tile has been explicitly saved
   // Legacy support
   frameIds?: string[]; // Will be migrated to frames
 }
@@ -81,10 +80,7 @@ export default function TileStudio() {
   
   // Load animated tiles from localStorage
   const [animatedTilesData, setAnimatedTilesData] = useLocalStorage<AnimatedTile[]>('animated-tiles', []);
-  const [animatedTiles, setAnimatedTiles] = useState<AnimatedTile[]>(() => {
-    // Mark all loaded tiles as saved
-    return (animatedTilesData || []).map(tile => ({ ...tile, isSaved: true }));
-  });
+  const [animatedTiles, setAnimatedTiles] = useState<AnimatedTile[]>(animatedTilesData || []);
   
   // Load composite tiles from localStorage
   const [compositeTilesData, setCompositeTilesData] = useLocalStorage<CompositeTile[]>('composite-tiles', []);
@@ -131,8 +127,7 @@ export default function TileStudio() {
                 id: `frame_${Date.now()}_${Math.random()}`,
                 tileId
               })),
-            frameIds: undefined,
-            isSaved: true // Migrated tiles are considered saved
+            frameIds: undefined
           };
         }
         
@@ -152,7 +147,19 @@ export default function TileStudio() {
     }
   }, [animatedTiles, getTile]);
 
-  // Note: Tiles are NOT auto-saved - only saved when user clicks Save button
+  // Auto-save animated tiles to localStorage
+  useEffect(() => {
+    if (animatedTiles) {
+      setAnimatedTilesData(animatedTiles);
+    }
+  }, [animatedTiles]);
+  
+  // Auto-save composite tiles to localStorage
+  useEffect(() => {
+    if (compositeTiles) {
+    setCompositeTilesData(compositeTiles);
+    }
+  }, [compositeTiles]);
   
   // Ensure currentTileId is valid (tile exists in state)
   useEffect(() => {
@@ -219,8 +226,7 @@ export default function TileStudio() {
       name: `Animated Tile ${(animatedTiles?.length || 0) + 1}`,
       frames: [],
       fps: 10,
-      isPublished: false,
-      isSaved: false // Mark as unsaved
+      isPublished: false
     };
     setAnimatedTiles(prev => [...(prev || []), newTile]);
     setToolState(prev => ({
@@ -335,16 +341,10 @@ export default function TileStudio() {
       animatedTile.fps
     );
     
-    // Mark as published AND saved in animated tiles list
+    // Mark as published in animated tiles list
     setAnimatedTiles(prev => (prev || []).map(at => 
-      at.id === id ? { ...at, isPublished: true, isSaved: true } : at
+      at.id === id ? { ...at, isPublished: true } : at
     ));
-    
-    // Save to localStorage
-    const savedTiles = (animatedTiles || []).map(at => 
-      at.id === id ? { ...at, isPublished: true, isSaved: true } : at
-    ).filter(at => at.isSaved);
-    setAnimatedTilesData(savedTiles);
     
     // Publish the tile
     publishTile(id);
@@ -534,13 +534,13 @@ export default function TileStudio() {
         <GameSection title="Draft Tiles">
           <div className="mb-4">
             <div className="text-xs font-bold mb-2 opacity-70">ANIMATED TILES</div>
-            {(!animatedTiles || animatedTiles.length === 0 || animatedTiles.filter(at => at.isSaved).length === 0) ? (
+            {(!animatedTiles || animatedTiles.length === 0) ? (
               <div className="text-sm opacity-60 text-center py-2">
                 No animated tiles yet
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 pr-2 pb-2">
-                {animatedTiles.filter(at => at.isSaved).map(at => {
+                {animatedTiles.map(at => {
                   const tileData = getAnimatedTileAsTile(at);
                   return (
                     <TileItem
@@ -740,20 +740,7 @@ export default function TileStudio() {
               <div className="flex gap-2 pt-2 border-t border-black/20">
                 <button
                   onClick={() => {
-                    if (!currentAnimatedTile.frames || currentAnimatedTile.frames.length === 0) {
-                      setToastMessage('Cannot save: Add at least 1 frame!');
-                      return;
-                    }
-                    // Mark tile as saved
-                    setAnimatedTiles(prev => (prev || []).map(at => 
-                      at.id === currentAnimatedTile.id ? { ...at, isSaved: true } : at
-                    ));
-                    // Save only saved tiles to localStorage
-                    const savedTiles = animatedTiles.map(at => 
-                      at.id === currentAnimatedTile.id ? { ...at, isSaved: true } : at
-                    ).filter(at => at.isSaved);
-                    setAnimatedTilesData(savedTiles);
-                    setToastMessage('Saved to drafts!');
+                    setToastMessage('Auto-saved to drafts!');
                   }}
                   className="flex-1 px-3 py-1 text-xs border-2 border-black bg-[var(--theme-bg-light)] hover:bg-[var(--theme-accent)] transition-colors"
                   style={{ 
@@ -777,8 +764,7 @@ export default function TileStudio() {
                         tileId: f.tileId
                       })),
                       fps: currentAnimatedTile.fps,
-                      isPublished: false,
-                      isSaved: false // New duplicate is unsaved
+                      isPublished: false
                     };
                     setAnimatedTiles(prev => [...(prev || []), newTile]);
                     setToolState(prev => ({
