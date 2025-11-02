@@ -1,14 +1,16 @@
 import React, { useRef, useEffect, useState } from "react";
-import { FilmIcon, Squares2X2Icon } from "@heroicons/react/24/solid";
+import { PlayIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import type { Tile } from "../hooks/useTiles";
 
 interface TileItemProps {
   tile: Tile;
   onClick?: () => void;
+  onDelete?: (e: React.MouseEvent) => void;
   selected?: boolean;
   size?: 'small' | 'medium' | 'large';
   showName?: boolean;
   showTypeIcon?: boolean;
+  showDelete?: boolean;
   getTile?: (id: string) => Tile | undefined;
   className?: string;
   style?: React.CSSProperties;
@@ -17,10 +19,12 @@ interface TileItemProps {
 export function TileItem({
   tile,
   onClick,
+  onDelete,
   selected = false,
   size = 'medium',
   showName = true,
   showTypeIcon = true,
+  showDelete = false,
   getTile,
   className = '',
   style = {}
@@ -28,14 +32,14 @@ export function TileItem({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
 
-  // Size mappings
+  // Size mappings - larger tiles for better visibility
   const sizeMap = {
-    small: { container: '80px', padding: 'p-1.5' },
-    medium: { container: '100px', padding: 'p-2' },
-    large: { container: '120px', padding: 'p-3' }
+    small: { width: '140px', canvasSize: '120px' },
+    medium: { width: '180px', canvasSize: '160px' },
+    large: { width: '200px', canvasSize: '180px' }
   };
 
-  const { container: containerSize, padding } = sizeMap[size];
+  const { width: containerWidth, canvasSize } = sizeMap[size];
 
   // Animation for animated tiles
   useEffect(() => {
@@ -87,39 +91,46 @@ export function TileItem({
     }
   }, [tile, currentFrameIndex, getTile]);
 
-  // Get type icon
+  // Get type icon - returns icon component for footer
   const getTypeIcon = () => {
     if (!showTypeIcon || !tile.isComplex) return null;
 
     if (tile.animationFrames) {
-      return <FilmIcon className="w-4 h-4 text-yellow-600" />;
+      return <PlayIcon className="w-4 h-4" />;
     }
     
-    // For composite tiles (future)
-    return <Squares2X2Icon className="w-4 h-4 text-blue-600" />;
+    // For composite tiles (future) - 2x2 grid of circles
+    return (
+      <div className="grid grid-cols-2 gap-0.5 w-4 h-4">
+        <div className="rounded-full bg-black"></div>
+        <div className="rounded-full bg-black"></div>
+        <div className="rounded-full bg-black"></div>
+        <div className="rounded-full bg-black"></div>
+      </div>
+    );
   };
 
   return (
     <div
-      className={`relative border-2 border-black ${padding} cursor-pointer transition-all hover:scale-105 ${
+      className={`relative border-2 border-black cursor-pointer transition-all hover:scale-105 overflow-hidden ${
         selected ? 'ring-4 ring-blue-500' : ''
       } ${className}`}
       style={{
-        width: containerSize,
-        height: showName ? 'auto' : containerSize,
-        backgroundColor: 'var(--theme-bg-light)',
-        boxShadow: '2px 2px 0 #000',
+        width: containerWidth,
+        backgroundColor: '#c0c0c0',
+        boxShadow: '4px 4px 0 #000',
         ...style
       }}
       onClick={onClick}
       title={tile.name}
     >
-      {/* Canvas Container */}
+      {/* Canvas Area - Large and Clear */}
       <div 
-        className="border-2 border-black relative"
+        className="border-b-2 border-black relative"
         style={{ 
-          aspectRatio: '1/1',
-          backgroundColor: 'var(--theme-bg-medium)'
+          height: canvasSize,
+          backgroundColor: 'var(--theme-bg-medium)',
+          padding: '8px'
         }}
       >
         <canvas
@@ -128,18 +139,42 @@ export function TileItem({
           style={{ imageRendering: 'pixelated' }}
         />
         
-        {/* Type Icon */}
-        {getTypeIcon() && (
-          <div className="absolute top-1 right-1 bg-white rounded-sm p-0.5 shadow-md border border-black">
-            {getTypeIcon()}
-          </div>
+        {/* Delete Button - Small Red X in top-right corner */}
+        {showDelete && onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(e);
+            }}
+            className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center border border-black hover:scale-110 transition-transform"
+            style={{ backgroundColor: '#ef4444' }}
+            title="Delete"
+          >
+            <XMarkIcon className="w-3 h-3 text-white" />
+          </button>
         )}
       </div>
 
-      {/* Name */}
+      {/* Footer with Icon and Info */}
       {showName && (
-        <div className="text-xs mt-1.5 text-center font-bold truncate">
-          {tile.name}
+        <div 
+          className="flex items-center gap-3 p-2"
+          style={{ backgroundColor: '#c0c0c0' }}
+        >
+          {/* Type Icon on Left */}
+          <div className="flex-shrink-0">
+            {getTypeIcon()}
+          </div>
+          
+          {/* Name and Size on Right */}
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-sm truncate" style={{ fontFamily: 'var(--font-mono)' }}>
+              {tile.name}
+            </div>
+            <div className="text-xs opacity-70" style={{ fontFamily: 'var(--font-mono)' }}>
+              {tile.size}×{tile.size}
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -272,6 +272,38 @@ export default function TileStudio() {
   const publishedAnimatedTiles = tiles.filter(t => t.isComplex && t.animationFrames);
   const allAvailableTiles = [...basicTiles, ...publishedAnimatedTiles];
   
+  // Helper function to convert AnimatedTile to Tile format for rendering
+  const getAnimatedTileAsTile = (animatedTile: AnimatedTile): any => {
+    if (!animatedTile.frameIds || animatedTile.frameIds.length === 0) {
+      // Return empty tile if no frames
+      return {
+        id: animatedTile.id,
+        name: animatedTile.name,
+        grid: [[]],
+        size: 16,
+        isComplex: true,
+        animationFrames: [],
+        animationFps: animatedTile.fps,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        folderId: null
+      };
+    }
+    
+    return {
+      id: animatedTile.id,
+      name: animatedTile.name,
+      grid: [[]], // Not used for animated tiles
+      size: 16,
+      isComplex: true,
+      animationFrames: animatedTile.frameIds,
+      animationFps: animatedTile.fps,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      folderId: null
+    };
+  };
+  
   // Get current tile based on active tool
   const currentAnimatedTile = getCurrentAnimatedTile();
   const currentCompositeTile = getCurrentCompositeTile();
@@ -301,7 +333,7 @@ export default function TileStudio() {
     const currentTile = currentAnimatedTile;
     
     if (!currentTile) {
-      return (
+  return (
         <div className="flex-1 flex items-center justify-center text-center">
           <div>
             <div className="text-2xl opacity-60 mb-4">Create a new animated tile to begin</div>
@@ -310,7 +342,7 @@ export default function TileStudio() {
               Hover over the "+" button in the top right to get started.
             </p>
           </div>
-        </div>
+              </div>
       );
     }
     
@@ -527,36 +559,24 @@ export default function TileStudio() {
                 No animated tiles yet
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
-                {animatedTiles.map(at => (
-                  <div
-                    key={at.id}
-                    className={`border-2 border-black p-2 cursor-pointer transition-all ${
-                      toolState.animated.currentTileId === at.id && currentTool === 'animated' 
-                        ? 'ring-4 ring-blue-500' 
-                        : ''
-                    }`}
-                    style={{ 
-                      backgroundColor: 'var(--theme-bg-light)',
-                      boxShadow: '2px 2px 0 #000'
-                    }}
-                    onClick={() => selectDraftTile('animated', at.id)}
-                  >
-                    <div className="font-bold text-sm mb-1 truncate">{at.name}</div>
-                    <div className="text-xs opacity-70">{at.frameIds?.length || 0} frames</div>
-                    <GameButton
-                      icon
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteAnimatedTile(at.id);
-                      }}
-                      style={{ padding: '4px', marginTop: '8px' }}
-                      title="Delete"
-                    >
-                      <TrashIcon className="w-3 h-3" />
-                    </GameButton>
-                  </div>
-                ))}
+              <div className="flex flex-col gap-3">
+                {animatedTiles.map(at => {
+                  const tileData = getAnimatedTileAsTile(at);
+                  return (
+                    <TileItem
+                      key={at.id}
+                      tile={tileData}
+                      size="small"
+                      showName={true}
+                      showTypeIcon={true}
+                      showDelete={true}
+                      selected={toolState.animated.currentTileId === at.id && currentTool === 'animated'}
+                      onClick={() => selectDraftTile('animated', at.id)}
+                      onDelete={() => deleteAnimatedTile(at.id)}
+                      getTile={getTile}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>
@@ -568,38 +588,70 @@ export default function TileStudio() {
                 No composite tiles yet
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-              {compositeTiles.map(ct => (
-                <div
-                  key={ct.id}
-                    className={`border-2 border-black p-2 cursor-pointer transition-all ${
-                      toolState.composite.currentTileId === ct.id && currentTool === 'composite' 
-                        ? 'ring-4 ring-blue-500' 
-                        : ''
-                }`}
-                style={{ 
-                    backgroundColor: 'var(--theme-bg-light)',
-                  boxShadow: '2px 2px 0 #000'
-                }}
-                    onClick={() => selectDraftTile('composite', ct.id)}
-                >
-                    <div className="font-bold text-sm mb-1 truncate">{ct.name}</div>
-                  <div className="text-xs opacity-70">{ct.tiles?.length || 0} tiles</div>
-                <GameButton
-                  icon
-                  onClick={(e) => {
-                    e.stopPropagation();
-                      deleteCompositeTile(ct.id);
-                  }}
-                  style={{ padding: '4px', marginTop: '8px' }}
-                  title="Delete"
-                >
-                  <TrashIcon className="w-3 h-3" />
-                </GameButton>
+              <div className="flex flex-col gap-3">
+                {compositeTiles.map(ct => {
+                  // Create a placeholder tile for composite (will be properly rendered when composite tool is implemented)
+                  const placeholderTile: any = {
+                    id: ct.id,
+                    name: ct.name,
+                    grid: [[]], 
+                    size: 16,
+                    isComplex: false,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                    folderId: null
+                  };
+                  
+                  return (
+                    <div
+                      key={ct.id}
+                      className={`relative border-2 border-black cursor-pointer transition-all overflow-hidden ${
+                        toolState.composite.currentTileId === ct.id && currentTool === 'composite' 
+                          ? 'ring-4 ring-blue-500' 
+                          : ''
+                      }`}
+                      style={{ 
+                        width: '140px',
+                        backgroundColor: '#c0c0c0',
+                        boxShadow: '4px 4px 0 #000'
+                      }}
+                      onClick={() => selectDraftTile('composite', ct.id)}
+                    >
+                      <div className="border-b-2 border-black relative" style={{ height: '120px', backgroundColor: 'var(--theme-bg-medium)' }}>
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Squares2X2Icon className="w-12 h-12 text-gray-400" />
+                        </div>
+                        
+                        {/* Delete Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteCompositeTile(ct.id);
+                          }}
+                          className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center border border-black hover:scale-110 transition-transform"
+                          style={{ backgroundColor: '#ef4444' }}
+                          title="Delete"
+                        >
+                          <XMarkIcon className="w-3 h-3 text-white" />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 p-2">
+                        <div className="grid grid-cols-2 gap-0.5 w-4 h-4 flex-shrink-0">
+                          <div className="rounded-full bg-black"></div>
+                          <div className="rounded-full bg-black"></div>
+                          <div className="rounded-full bg-black"></div>
+                          <div className="rounded-full bg-black"></div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-bold truncate">{ct.name}</div>
+                          <div className="text-xs opacity-70">{ct.tiles?.length || 0} tiles</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
-        )}
+            )}
           </div>
         </GameSection>
       </GameMenu>
@@ -621,7 +673,7 @@ export default function TileStudio() {
               {basicTiles.length > 0 && (
                 <div className="mb-4">
                   <div className="text-xs font-bold mb-2 opacity-70">BASIC TILES</div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
               {basicTiles.map(tile => (
                       <TileItem
                   key={tile.id}
@@ -644,7 +696,7 @@ export default function TileStudio() {
               {publishedAnimatedTiles.length > 0 && (
                 <div>
                   <div className="text-xs font-bold mb-2 opacity-70">ANIMATED TILES</div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     {publishedAnimatedTiles.map(tile => (
                       <TileItem
                         key={tile.id}
