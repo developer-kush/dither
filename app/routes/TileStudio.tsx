@@ -669,7 +669,7 @@ export default function TileStudio() {
       </GameMenu>
 
       {/* Main Content */}
-      <div className="flex-1 mt-16 flex flex-col overflow-hidden">
+      <div className="flex-1 mt-16 ml-4 flex flex-col overflow-hidden">
         {/* Top Bar */}
         <div className="px-8 py-3 border-b-2 border-black flex items-center justify-between" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
           <div className="flex items-center gap-4">
