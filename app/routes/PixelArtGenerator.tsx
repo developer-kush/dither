@@ -748,7 +748,7 @@ export default function PixelArtGenerator() {
         <div className="h-full flex flex-col">
           <GameSection title="Saved Tiles">
             <TileListVisual
-              tiles={tiles}
+              tiles={tiles.filter(t => !t.isComplex)}
               onLoadTile={handleLoadTile}
               onDeleteTile={deleteTile}
               currentTileId={currentTileId}
