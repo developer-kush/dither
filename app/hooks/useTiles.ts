@@ -55,35 +55,6 @@ export function useTiles() {
     }
   }, []);
 
-  // One-time migration: Add dims:1x1 label to all basic tiles that don't have it
-  useEffect(() => {
-    if (!isLoaded || tiles.length === 0) return;
-
-    let needsUpdate = false;
-    const updatedTiles = tiles.map(tile => {
-      // Skip complex tiles (animated/composite)
-      if (tile.isComplex) return tile;
-      
-      const labels = tile.labels || [];
-      
-      // Check if tile already has a dims label
-      const hasDimsLabel = labels.some(label => label.startsWith('dims:'));
-      
-      if (!hasDimsLabel) {
-        needsUpdate = true;
-        // All basic tiles are 1x1 tile units regardless of pixel size
-        return { ...tile, labels: [...labels, 'dims:1x1'], updatedAt: Date.now() };
-      }
-      
-      return tile;
-    });
-
-    if (needsUpdate) {
-      console.log('🔄 Migration: Adding dims:1x1 labels to existing basic tiles');
-      setTiles(updatedTiles);
-    }
-  }, [isLoaded, tiles.length]);
-
   // Save tiles to localStorage whenever they change
   useEffect(() => {
     if (isLoaded) {

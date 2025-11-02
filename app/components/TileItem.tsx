@@ -168,10 +168,10 @@ export function TileItem({
           
           {/* Name and Size on Right */}
           <div className="flex-1 min-w-0">
-            <div className="font-bold text-sm truncate" style={{ fontFamily: 'var(--font-mono)' }}>
+            <div className="font-bold text-sm truncate">
               {tile.name}
             </div>
-            <div className="text-xs opacity-70" style={{ fontFamily: 'var(--font-mono)' }}>
+            <div className="text-xs opacity-70">
               {tile.size}×{tile.size}
             </div>
           </div>
