@@ -40,7 +40,7 @@ interface ToolState {
 }
 
 export default function TileStudio() {
-  const { tiles, getTile, saveTile, deleteTile, renameTile, folders, publishTile, unpublishTile, addLabelToTile } = useTiles();
+  const { tiles, getTile, saveTile, deleteTile, renameTile, folders, publishTile, unpublishTile, addLabelToTile, setTileLabels } = useTiles();
   
   // Enable route cycling with Shift+Tab
   useRouteCycling();
@@ -131,9 +131,11 @@ export default function TileStudio() {
       tileId,
       true, // isComplex
       [], // Empty animationFrames initially
-      10, // Default FPS
-      ['subtype:animated', 'dims:1x1'] // System labels
+      10 // Default FPS
     );
+    
+    // Add system labels
+    setTileLabels(tileId, ['subtype:animated', 'dims:1x1']);
     
     setToolState(prev => ({
       ...prev,
@@ -171,8 +173,7 @@ export default function TileStudio() {
       id,
       true,
       tile.animationFrames,
-      fps,
-      tile.labels
+      fps
     );
   };
   
@@ -216,8 +217,7 @@ export default function TileStudio() {
       id,
       true,
       [...currentFrames, newTileId],
-      animatedTile.animationFps,
-      animatedTile.labels
+      animatedTile.animationFps
     );
   };
   
@@ -236,8 +236,7 @@ export default function TileStudio() {
       id,
       true,
       newFrames,
-      animatedTile.animationFps,
-      animatedTile.labels
+      animatedTile.animationFps
     );
     
     // Reset selection when removing a frame
@@ -251,31 +250,42 @@ export default function TileStudio() {
 
   // === COMPOSITE TILE FUNCTIONS ===
   
-  const getCurrentCompositeTile = (): CompositeTile | null => {
+  const getCurrentCompositeTile = () => {
     const currentId = toolState.composite.currentTileId;
-    if (!currentId || !compositeTiles) return null;
-    return compositeTiles.find(t => t.id === currentId) || null;
+    if (!currentId) return null;
+    return getTile(currentId) || null;
   };
   
   const createNewCompositeTile = () => {
-    const newTile: CompositeTile = {
-      id: `composite_${Date.now()}`,
-      name: `Composite Tile ${(compositeTiles?.length || 0) + 1}`,
-      tiles: [],
-      isPublished: false
-    };
-    setCompositeTiles(prev => [...(prev || []), newTile]);
+    const tileId = `composite_${Date.now()}`;
+    const tileName = `Composite Tile ${compositeTiles.length + 1}`;
+    
+    // Create a new composite tile in the main tiles system
+    saveTile(
+      tileName,
+      [[]], // Empty grid for complex tiles
+      16, // Default size
+      null, // No folder
+      tileId,
+      true, // isComplex
+      [], // Empty animation frames (composite tiles don't animate)
+      undefined // No FPS for composite
+    );
+    
+    // Add system labels
+    setTileLabels(tileId, ['subtype:composite']);
+    
     setToolState(prev => ({
       ...prev,
-      composite: { currentTileId: newTile.id }
+      composite: { currentTileId: tileId }
     }));
-    setEditingName(newTile.name);
+    setEditingName(tileName);
     setNewMenuOpen(false);
   };
 
   const deleteCompositeTile = (id: string) => {
     if (window.confirm('Delete this composite tile?')) {
-      setCompositeTiles(prev => (prev || []).filter(t => t.id !== id));
+      deleteTile(id);
       if (toolState.composite.currentTileId === id) {
         setToolState(prev => ({
           ...prev,
@@ -286,9 +296,7 @@ export default function TileStudio() {
   };
 
   const updateCompositeTileName = (id: string, name: string) => {
-    setCompositeTiles(prev => (prev || []).map(ct => 
-      ct.id === id ? { ...ct, name } : ct
-    ));
+    renameTile(id, name);
   };
 
   // === SHARED FUNCTIONS ===
@@ -302,53 +310,10 @@ export default function TileStudio() {
       [tool]: { currentTileId: tileId }
     }));
     
-    if (tool === 'animated') {
-      const tile = animatedTiles?.find(at => at.id === tileId);
-      if (tile) setEditingName(tile.name);
-    } else if (tool === 'composite') {
-      const tile = compositeTiles?.find(ct => ct.id === tileId);
-      if (tile) setEditingName(tile.name);
-    }
+    const tile = getTile(tileId);
+    if (tile) setEditingName(tile.name);
   };
 
-  // Helper function to convert AnimatedTile to Tile format for rendering
-  const getAnimatedTileAsTile = (animatedTile: AnimatedTile): any => {
-    if (!animatedTile.frames || animatedTile.frames.length === 0) {
-      // Return empty tile if no frames
-      return {
-        id: animatedTile.id,
-        name: animatedTile.name,
-        grid: [[]],
-        size: 16,
-        isComplex: true,
-        animationFrames: [],
-        animationFps: animatedTile.fps,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        folderId: null
-      };
-    }
-    
-    // Extract tileIds from frames
-    const frameIds = animatedTile.frames.map(f => f.tileId);
-    
-    // Get the size from the first frame to ensure consistency
-    const firstFrameTile = getTile(frameIds[0]);
-    const tileSize = firstFrameTile?.size || 16;
-    
-    return {
-      id: animatedTile.id,
-      name: animatedTile.name,
-      grid: [[]], // Not used for animated tiles
-      size: tileSize,
-      isComplex: true,
-      animationFrames: frameIds,
-      animationFps: animatedTile.fps,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      folderId: null
-    };
-  };
   
   // Get current tile based on active tool
   const currentAnimatedTile = getCurrentAnimatedTile();
