@@ -627,9 +627,55 @@ export default function TileStudio() {
     );
   };
 
+  // New button and dropdown menu for NavBar
+  const rightActions = (
+    <div 
+      className="relative"
+      onMouseEnter={handleNewMenuEnter}
+      onMouseLeave={handleNewMenuLeave}
+    >
+      <GameButton>
+        <PlusIcon className="w-5 h-5" />
+        <span className="ml-2">New</span>
+      </GameButton>
+      
+      {newMenuOpen && (
+        <div 
+          className="absolute right-0 top-full mt-2 border-2 border-black min-w-48 z-50"
+          style={{ backgroundColor: 'var(--theme-bg-panel)', boxShadow: '4px 4px 0 #000' }}
+          onMouseEnter={handleNewMenuEnter}
+          onMouseLeave={handleNewMenuLeave}
+        >
+          <div
+            className="p-3 cursor-pointer hover:bg-[var(--theme-bg-medium)] border-b border-black"
+            onClick={() => {
+              createNewAnimatedTile();
+              setCurrentTool('animated');
+              setNewMenuOpen(false);
+            }}
+          >
+            <div className="font-bold">Animated</div>
+            <div className="text-xs opacity-70">Frame-by-frame animation</div>
+          </div>
+          <div
+            className="p-3 cursor-pointer hover:bg-[var(--theme-bg-medium)]"
+            onClick={() => {
+              createNewCompositeTile();
+              setCurrentTool('composite');
+              setNewMenuOpen(false);
+            }}
+          >
+            <div className="font-bold">Composite</div>
+            <div className="text-xs opacity-70">Multi-tile structure</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="w-full h-screen flex flex-col" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
-      <NavBar title="Tile Studio" />
+      <NavBar title="Tile Studio" rightActions={rightActions} />
 
       {/* Left Sliding Menu - Draft Tiles */}
       <GameMenu 
@@ -808,73 +854,6 @@ export default function TileStudio() {
 
       {/* Main Content */}
       <div className="flex-1 mt-16 ml-4 flex flex-col overflow-hidden">
-        {/* Top Bar */}
-        <div className="px-8 py-3 border-b-2 border-black flex items-center justify-between" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
-          <div className="flex items-center gap-4">
-            <span className="font-bold text-sm opacity-70">TOOL:</span>
-            <div className="flex gap-2">
-              <GameButton
-                onClick={() => setCurrentTool('animated')}
-                className={currentTool === 'animated' ? 'ring-2 ring-blue-500' : ''}
-              >
-                <FilmIcon className="w-4 h-4" />
-                <span className="ml-1">Animated</span>
-              </GameButton>
-              <GameButton
-                onClick={() => setCurrentTool('composite')}
-                className={currentTool === 'composite' ? 'ring-2 ring-blue-500' : ''}
-              >
-                <Squares2X2Icon className="w-4 h-4" />
-                <span className="ml-1">Composite</span>
-          </GameButton>
-            </div>
-            <span className="text-xs opacity-50">(Press F to toggle)</span>
-          </div>
-          
-          <div 
-            className="relative"
-            onMouseEnter={handleNewMenuEnter}
-            onMouseLeave={handleNewMenuLeave}
-          >
-            <GameButton>
-              <PlusIcon className="w-5 h-5" />
-              <span className="ml-2">New</span>
-            </GameButton>
-            
-            {newMenuOpen && (
-              <div 
-                className="absolute right-0 top-full mt-2 border-2 border-black min-w-48 z-50"
-                style={{ backgroundColor: 'var(--theme-bg-panel)', boxShadow: '4px 4px 0 #000' }}
-                onMouseEnter={handleNewMenuEnter}
-                onMouseLeave={handleNewMenuLeave}
-              >
-                <div
-                  className="p-3 cursor-pointer hover:bg-[var(--theme-bg-medium)] border-b border-black"
-                  onClick={() => {
-                    createNewAnimatedTile();
-                    setCurrentTool('animated');
-                    setNewMenuOpen(false);
-                  }}
-                >
-                  <div className="font-bold">Animated</div>
-                  <div className="text-xs opacity-70">Frame-by-frame animation</div>
-              </div>
-                <div
-                  className="p-3 cursor-pointer hover:bg-[var(--theme-bg-medium)]"
-                  onClick={() => {
-                    createNewCompositeTile();
-                    setCurrentTool('composite');
-                    setNewMenuOpen(false);
-                  }}
-                >
-                  <div className="font-bold">Composite</div>
-                  <div className="text-xs opacity-70">Multi-tile structure</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* Tool Content */}
         {currentTool === 'animated' ? renderAnimatedTool() : renderCompositeTool()}
       </div>
