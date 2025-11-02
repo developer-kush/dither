@@ -477,13 +477,13 @@ export default function TileStudio() {
           
           <div>
             <div className="text-xs font-bold mb-2 opacity-70">COMPOSITE TILES</div>
-            {(!compositeTiles || compositeTiles.length === 0) ? (
+            {(!compositeTiles || compositeTiles.length === 0 || compositeTiles.filter(ct => ct.tiles && ct.tiles.length > 0).length === 0) ? (
               <div className="text-sm opacity-60 text-center py-2">
                 No composite tiles yet
           </div>
         ) : (
               <div className="grid grid-cols-2 gap-3 pr-2 pb-2">
-                {compositeTiles.map(ct => {
+                {compositeTiles.filter(ct => ct.tiles && ct.tiles.length > 0).map(ct => {
                   return (
                 <div
                   key={ct.id}
