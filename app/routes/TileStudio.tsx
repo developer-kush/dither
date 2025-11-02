@@ -8,6 +8,7 @@ import { NavBar } from "../components/NavBar";
 import { GameMenu } from "../components/GameMenu";
 import { GameSection } from "../components/GameSection";
 import { Toast } from "../components/Toast";
+import { TileItem } from "../components/TileItem";
 import { 
   PlusIcon, 
   TrashIcon, 
@@ -448,37 +449,15 @@ export default function TileStudio() {
               if (!tile) return null;
               
               return (
-                <div
-                  key={index}
-                  className={`relative flex-shrink-0 border-2 cursor-pointer ${
-                    selectedFrameIndex === index ? 'border-blue-500 border-4' : 'border-black'
-                  }`}
-                  style={{ 
-                    width: '120px',
-                    height: '120px',
-                    backgroundColor: 'var(--theme-bg-light)'
-                  }}
-                  onClick={() => setSelectedFrameIndex(index)}
-                >
-                  <canvas
-                    ref={(canvas) => {
-                      if (!canvas) return;
-                      const ctx = canvas.getContext('2d');
-                      if (!ctx) return;
-
-                      canvas.width = tile.size;
-                      canvas.height = tile.size;
-
-                      for (let y = 0; y < tile.size; y++) {
-                        for (let x = 0; x < tile.size; x++) {
-                          const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
-                          ctx.fillStyle = color;
-                          ctx.fillRect(x, y, 1, 1);
-                        }
-                      }
-                    }}
-                    className="w-full h-full"
-                    style={{ imageRendering: 'pixelated' }}
+                <div key={index} className="relative">
+                  <TileItem
+                    tile={tile}
+                    size="large"
+                    showName={false}
+                    showTypeIcon={true}
+                    selected={selectedFrameIndex === index}
+                    onClick={() => setSelectedFrameIndex(index)}
+                    getTile={getTile}
                   />
                   <GameButton
                     icon
@@ -488,7 +467,7 @@ export default function TileStudio() {
                       if (selectedFrameIndex === index) setSelectedFrameIndex(null);
                     }}
                     className="absolute top-1 right-1"
-                    style={{ padding: '2px' }}
+                    style={{ padding: '2px', zIndex: 10 }}
                     title="Remove frame"
                   >
                     <XMarkIcon className="w-3 h-3" />
@@ -644,48 +623,21 @@ export default function TileStudio() {
                   <div className="text-xs font-bold mb-2 opacity-70">BASIC TILES</div>
                   <div className="grid grid-cols-3 gap-2">
               {basicTiles.map(tile => (
-                <div
+                      <TileItem
                   key={tile.id}
-                  className="border-2 border-black cursor-pointer p-2 transition-all hover:scale-105"
-                  style={{ 
-                    backgroundColor: 'var(--theme-bg-light)',
-                    boxShadow: '2px 2px 0 #000'
-                  }}
+                        tile={tile}
+                        size="small"
+                        showTypeIcon={false}
                         onClick={() => {
                           if (currentAnimatedTile) {
                             addFrameToAnimatedTile(currentAnimatedTile.id, tile.id);
                             setAvailableTilesMenuOpen(false);
                           }
                         }}
-                  title={tile.name}
-                >
-                  <canvas
-                    ref={(canvas) => {
-                      if (!canvas) return;
-                      const ctx = canvas.getContext('2d');
-                      if (!ctx) return;
-
-                      canvas.width = tile.size;
-                      canvas.height = tile.size;
-
-                      for (let y = 0; y < tile.size; y++) {
-                        for (let x = 0; x < tile.size; x++) {
-                          const color = tile.grid[y]?.[x] || 'rgba(0,0,0,0)';
-                          ctx.fillStyle = color;
-                          ctx.fillRect(x, y, 1, 1);
-                        }
-                      }
-                    }}
-                    style={{ 
-                      imageRendering: 'pixelated',
-                      width: '100%',
-                      height: 'auto'
-                    }}
-                  />
-                  <div className="text-xs mt-1 text-center font-bold truncate">{tile.name}</div>
-                </div>
-              ))}
-            </div>
+                        getTile={getTile}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
               
@@ -694,33 +646,21 @@ export default function TileStudio() {
                   <div className="text-xs font-bold mb-2 opacity-70">ANIMATED TILES</div>
                   <div className="grid grid-cols-3 gap-2">
                     {publishedAnimatedTiles.map(tile => (
-                      <div
+                      <TileItem
                         key={tile.id}
-                        className="border-2 border-black cursor-pointer p-2 transition-all hover:scale-105 relative"
-                        style={{ 
-                          backgroundColor: 'var(--theme-bg-light)',
-                          boxShadow: '2px 2px 0 #000'
-                        }}
+                        tile={tile}
+                        size="small"
+                        showTypeIcon={true}
                         onClick={() => {
                           if (currentAnimatedTile) {
                             addFrameToAnimatedTile(currentAnimatedTile.id, tile.id);
                             setAvailableTilesMenuOpen(false);
                           }
                         }}
-                        title={tile.name}
-                      >
-                        <div className="aspect-square">
-                          <AnimatedTilePreview 
-                            frameIds={tile.animationFrames || []} 
-                            fps={tile.animationFps || 10}
-                            getTile={getTile}
-                          />
-                        </div>
-                        <div className="text-xs mt-1 text-center font-bold truncate">{tile.name}</div>
-                        <FilmIcon className="w-3 h-3 absolute top-1 right-1 opacity-50" />
-                      </div>
-                    ))}
-                  </div>
+                        getTile={getTile}
+                      />
+              ))}
+            </div>
                 </div>
               )}
             </>

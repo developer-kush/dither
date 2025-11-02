@@ -2,10 +2,11 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useTiles } from '../hooks/useTiles';
 import { useRouteCycling } from '../hooks/useRouteCycling';
 import { NavBar } from '../components/NavBar';
+import { TileItem } from '../components/TileItem';
 import { TrashIcon, MagnifyingGlassIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 
 export default function TilesPage() {
-  const { tiles, deleteTile, renameTile, publishTile, unpublishTile, getAllLabels, addLabelToTile, removeLabelFromTile } = useTiles();
+  const { tiles, deleteTile, renameTile, publishTile, unpublishTile, getAllLabels, addLabelToTile, removeLabelFromTile, getTile } = useTiles();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -105,26 +106,6 @@ export default function TilesPage() {
   const handleRemoveLabel = (label: string) => {
     if (!selectedTileId) return;
     removeLabelFromTile(selectedTileId, label);
-  };
-
-  // Create image from tile grid
-  const getTileImage = (tile: typeof tiles[0]) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = tile.size;
-    canvas.height = tile.size;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return '';
-
-    tile.grid.forEach((row, y) => {
-      row.forEach((color, x) => {
-        if (color && color !== 'rgba(0,0,0,0)') {
-          ctx.fillStyle = color;
-          ctx.fillRect(x, y, 1, 1);
-        }
-      });
-    });
-
-    return canvas.toDataURL();
   };
 
   return (
@@ -237,47 +218,26 @@ export default function TilesPage() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {filteredTiles.map(tile => {
-                const isComplex = tile.isComplex || false;
                 const isSelected = selectedTileId === tile.id;
 
                 return (
-                  <div
-                    key={tile.id}
-                    onClick={() => setSelectedTileId(tile.id)}
-                    className={`border-2 cursor-pointer p-4 transition-all hover:translate-x-0.5 hover:translate-y-0.5 ${
-                      isSelected ? 'ring-4 ring-blue-500' : ''
-                    }`}
-                    style={{
-                      backgroundColor: isComplex ? '#FFF8DC' : 'var(--theme-bg-panel)',
-                      borderColor: isComplex ? '#FFD700' : '#000',
-                      borderWidth: isComplex ? '3px' : '2px',
-                      boxShadow: isComplex ? '4px 4px 0 #DAA520' : '4px 4px 0 #000'
-                    }}
-                  >
-                    {/* Tile Image */}
-                    <div className="mb-3 bg-white border-2 border-black p-2">
-                      <img
-                        src={getTileImage(tile)}
-                        alt={tile.name}
-                        className="w-full h-auto"
-                        style={{ imageRendering: 'pixelated' }}
-                      />
-                    </div>
-
-                    {/* Tile Name */}
-                    <div
-                      className="font-bold text-sm truncate text-center"
-                      title={tile.name}
-                      style={{ color: isComplex ? '#8B6914' : 'inherit' }}
-                    >
-                      {tile.name}
-                    </div>
-
-                    {/* Tile Info */}
-                    <div className="text-[10px] opacity-60 text-center mt-1">
-                      {tile.size}x{tile.size}
-                      {tile.isComplex && <span className="ml-2 font-bold text-amber-700">ANIM</span>}
-                      {tile.isPublished && <span className="ml-2 font-bold text-green-700">PUB</span>}
+                  <div key={tile.id} className="relative">
+                    <TileItem
+                      tile={tile}
+                      size="medium"
+                      showName={true}
+                      showTypeIcon={true}
+                      selected={isSelected}
+                      onClick={() => setSelectedTileId(tile.id)}
+                      getTile={getTile}
+                    />
+                    {/* Additional info badges */}
+                    <div className="absolute bottom-7 left-0 right-0 flex justify-center gap-1">
+                      {tile.isPublished && (
+                        <span className="text-[9px] font-bold bg-green-600 text-white px-1 rounded border border-black">
+                          PUB
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -298,12 +258,13 @@ export default function TilesPage() {
 
               {/* Tile Preview */}
               <div className="mb-6 border-2 border-black p-4" style={{ backgroundColor: 'var(--theme-bg-light)', boxShadow: '4px 4px 0 #000' }}>
-                <div className="bg-white border-2 border-black p-4 mb-4">
-                  <img
-                    src={getTileImage(selectedTile)}
-                    alt={selectedTile.name}
-                    className="w-full h-auto"
-                    style={{ imageRendering: 'pixelated' }}
+                <div className="flex justify-center mb-4">
+                  <TileItem
+                    tile={selectedTile}
+                    size="large"
+                    showName={false}
+                    showTypeIcon={true}
+                    getTile={getTile}
                   />
                 </div>
                 <div className="text-center">
