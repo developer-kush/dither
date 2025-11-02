@@ -510,11 +510,16 @@ export default function TileStudio() {
                     e.stopPropagation();
                       deleteCompositeTile(ct.id);
                   }}
-                          className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center border border-black hover:scale-110 transition-transform"
-                          style={{ backgroundColor: '#ef4444' }}
+                          className="absolute w-6 h-6 flex items-center justify-center border-2 border-black hover:translate-x-[1px] hover:translate-y-[1px] transition-all active:translate-x-[2px] active:translate-y-[2px]"
+                          style={{ 
+                            backgroundColor: '#ef4444',
+                            boxShadow: '2px 2px 0 #000',
+                            top: '-3px',
+                            right: '-3px'
+                          }}
                   title="Delete"
                 >
-                          <XMarkIcon className="w-3 h-3 text-white" />
+                          <XMarkIcon className="w-4 h-4 text-white" />
                         </button>
                       </div>
                       <div className="flex items-center gap-2 p-2">
@@ -770,8 +775,8 @@ export default function TileStudio() {
         
         {/* Bottom Frames Strip */}
         {currentAnimatedTile && currentTool === 'animated' && (
-          <div className="px-8 py-4 border-t-2 border-black" style={{ backgroundColor: 'var(--theme-bg-light)', minHeight: '200px' }}>
-            <div className="mb-3">
+          <div className="px-8 py-5 border-t-2 border-black" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
+            <div className="mb-4">
               <span 
                 className="inline-block px-3 py-1 text-xs font-bold border-2 border-black"
                 style={{ 
@@ -786,7 +791,8 @@ export default function TileStudio() {
               className="flex gap-4 overflow-x-auto overflow-y-visible pb-2 pt-1"
               style={{
                 scrollbarWidth: 'thin',
-                scrollbarColor: 'var(--theme-bg-medium) transparent'
+                scrollbarColor: 'var(--theme-bg-medium) transparent',
+                height: '160px'
               }}
             >
               {currentAnimatedTile.frameIds && currentAnimatedTile.frameIds.length > 0 ? (
@@ -811,11 +817,16 @@ export default function TileStudio() {
                           removeFrameFromAnimatedTile(currentAnimatedTile.id, index);
                           if (selectedFrameIndex === index) setSelectedFrameIndex(null);
                         }}
-                        className="absolute top-2 right-2 w-5 h-5 flex items-center justify-center border border-black hover:scale-110 transition-transform z-10"
-                        style={{ backgroundColor: '#ef4444' }}
+                        className="absolute w-6 h-6 flex items-center justify-center border-2 border-black hover:translate-x-[1px] hover:translate-y-[1px] transition-all active:translate-x-[2px] active:translate-y-[2px] z-10"
+                        style={{ 
+                          backgroundColor: '#ef4444',
+                          boxShadow: '2px 2px 0 #000',
+                          top: '-2px',
+                          right: '-2px'
+                        }}
                         title="Remove frame"
                       >
-                        <XMarkIcon className="w-3 h-3 text-white" />
+                        <XMarkIcon className="w-4 h-4 text-white" />
                       </button>
                       <div className="absolute bottom-2 left-2 bg-black text-white px-1 text-xs font-bold z-10">
                         {index + 1}

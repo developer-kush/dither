@@ -34,7 +34,7 @@ export function TileItem({
 
   // Size mappings - larger tiles for better visibility
   const sizeMap = {
-    small: { width: '140px', canvasSize: '120px' },
+    small: { width: '120px', canvasSize: '100px' },
     medium: { width: '180px', canvasSize: '160px' },
     large: { width: '200px', canvasSize: '180px' }
   };
@@ -112,25 +112,32 @@ export function TileItem({
 
   return (
     <div
-      className={`relative border-2 border-black cursor-pointer transition-all hover:scale-105 overflow-hidden ${
+      className={`relative border-2 border-black cursor-pointer transition-all hover:scale-105 ${
         selected ? 'ring-4 ring-blue-500' : ''
       } ${className}`}
       style={{
         width: containerWidth,
         backgroundColor: '#c0c0c0',
         boxShadow: '4px 4px 0 #000',
+        overflow: showDelete ? 'visible' : 'hidden',
         ...style
       }}
       onClick={onClick}
       title={tile.name}
     >
-      {/* Canvas Area - Large and Clear */}
+      {/* Canvas Area - Perfect Square */}
       <div 
-        className="border-b-2 border-black relative"
+        className={`relative ${showName ? 'border-b-2 border-black' : ''}`}
         style={{ 
-          height: canvasSize,
+          width: containerWidth,
+          height: containerWidth,
           backgroundColor: 'var(--theme-bg-medium)',
-          padding: '8px'
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '8px',
+          boxSizing: 'border-box',
+          overflow: 'visible'
         }}
       >
         <canvas
@@ -139,18 +146,23 @@ export function TileItem({
           style={{ imageRendering: 'pixelated' }}
         />
         
-        {/* Delete Button - Small Red X in top-right corner */}
+        {/* Delete Button - 3D styled button in top-right corner */}
         {showDelete && onDelete && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onDelete(e);
             }}
-            className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center border border-black hover:scale-110 transition-transform"
-            style={{ backgroundColor: '#ef4444' }}
+            className="absolute w-6 h-6 flex items-center justify-center border-2 border-black hover:translate-x-[1px] hover:translate-y-[1px] transition-all active:translate-x-[2px] active:translate-y-[2px]"
+            style={{ 
+              backgroundColor: '#ef4444',
+              boxShadow: '2px 2px 0 #000',
+              top: '-3px',
+              right: '-3px'
+            }}
             title="Delete"
           >
-            <XMarkIcon className="w-3 h-3 text-white" />
+            <XMarkIcon className="w-4 h-4 text-white" />
           </button>
         )}
       </div>
