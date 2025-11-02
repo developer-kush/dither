@@ -324,10 +324,9 @@ export default function TileStudio() {
   const currentAnimatedTile = getCurrentAnimatedTile();
   const currentCompositeTile = getCurrentCompositeTile();
 
-  // Available tiles for frame selection
+  // Available tiles for frame selection - only static tiles, no complex/animated tiles
   const allAvailableTiles = tiles.filter(t => !t.isComplex);
   const basicTiles = tiles.filter(t => !t.isComplex && !t.isPublished);
-  const publishedAnimatedTiles = tiles.filter(t => t.isComplex && t.animationFrames && t.isPublished);
   
   // Handlers for New menu with delay
   const handleNewMenuEnter = () => {
@@ -534,29 +533,6 @@ export default function TileStudio() {
                 </div>
             </div>
           )}
-                  
-                  {publishedAnimatedTiles.length > 0 && (
-                    <div>
-                      <div className="text-xs font-bold mb-2 opacity-70">ANIMATED TILES</div>
-                      <div className="grid grid-cols-3 gap-3">
-                        {publishedAnimatedTiles.map(tile => (
-                          <TileItem
-                            key={tile.id}
-                            tile={tile}
-                            size="small"
-                            showName={true}
-                            showTypeIcon={true}
-                            onClick={() => {
-                              if (currentAnimatedTile) {
-                                addFrameToAnimatedTile(currentAnimatedTile.id, tile.id);
-                              }
-                            }}
-                            getTile={getTile}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
         </div>
               )}
             </div>
@@ -772,7 +748,7 @@ export default function TileStudio() {
                           e.stopPropagation();
                           removeFrameFromAnimatedTile(currentAnimatedTile.id, index);
                         }}
-                        disabled={currentAnimatedTile.animationFrames.length <= 1}
+                        disabled={(currentAnimatedTile.animationFrames?.length || 0) <= 1}
                         className="absolute w-6 h-6 flex items-center justify-center border-2 border-black hover:translate-x-[1px] hover:translate-y-[1px] transition-all active:translate-x-[2px] active:translate-y-[2px] z-10 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0"
                         style={{ 
                           backgroundColor: '#ef4444',
@@ -780,7 +756,7 @@ export default function TileStudio() {
                           top: '-2px',
                           right: '-2px'
                         }}
-                        title={currentAnimatedTile.animationFrames.length <= 1 ? "Cannot remove the last frame" : "Remove frame"}
+                        title={(currentAnimatedTile.animationFrames?.length || 0) <= 1 ? "Cannot remove the last frame" : "Remove frame"}
                       >
                         <XMarkIcon className="w-4 h-4 text-white" />
                       </button>
