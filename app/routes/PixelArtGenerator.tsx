@@ -76,7 +76,7 @@ export default function PixelArtGenerator() {
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
   
   // Tile management
-  const { tiles, folders, saveTile, deleteTile, renameTile, getTile, createFolder, renameFolder, deleteFolder, publishTile, unpublishTile } = useTiles();
+  const { tiles, folders, saveTile, deleteTile, renameTile, getTile, createFolder, renameFolder, deleteFolder, publishTile, unpublishTile, addLabelToTile } = useTiles();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -531,6 +531,10 @@ export default function PixelArtGenerator() {
     const existingTile = tiles.find(t => t.id === currentTileId);
     
     saveTile(currentTileName.trim(), grid, gridSize, currentFolderId, currentTileId);
+    
+    // Add system label for dimensions (for use in animations)
+    const dimsLabel = `dims:${gridSize}x${gridSize}`;
+    addLabelToTile(currentTileId, dimsLabel);
     
     if (!existingTile) {
       showToast(`Tile "${currentTileName.trim()}" saved successfully!`, 'success');

@@ -199,6 +199,46 @@ export default function TileStudio() {
   };
   
   const addFrameToAnimatedTile = (id: string, tileId: string) => {
+    const animatedTile = animatedTiles?.find(at => at.id === id);
+    if (!animatedTile) return;
+    
+    const newTile = getTile(tileId);
+    if (!newTile) {
+      setToastMessage('Tile not found');
+      return;
+    }
+    
+    // Check if this is the first frame
+    if (!animatedTile.frameIds || animatedTile.frameIds.length === 0) {
+      // First frame - just add it
+      setAnimatedTiles(prev => (prev || []).map(at => 
+        at.id === id ? { ...at, frameIds: [tileId] } : at
+      ));
+      return;
+    }
+    
+    // Get the first frame to check dimensions
+    const firstFrame = getTile(animatedTile.frameIds[0]);
+    if (!firstFrame) {
+      setToastMessage('First frame not found');
+      return;
+    }
+    
+    // Extract dimensions from labels
+    const getFirstDimsLabel = (labels?: string[]) => {
+      if (!labels) return null;
+      return labels.find(l => l.startsWith('dims:'));
+    };
+    
+    const firstFrameDims = getFirstDimsLabel(firstFrame.labels);
+    const newFrameDims = getFirstDimsLabel(newTile.labels);
+    
+    // Validate dimensions match
+    if (firstFrameDims !== newFrameDims) {
+      setToastMessage(`Frame dimensions must match! First frame is ${firstFrameDims || 'unknown'}, selected frame is ${newFrameDims || 'unknown'}`);
+      return;
+    }
+    
     setAnimatedTiles(prev => (prev || []).map(at => 
       at.id === id ? { ...at, frameIds: [...(at.frameIds || []), tileId] } : at
     ));
@@ -216,6 +256,12 @@ export default function TileStudio() {
     const animatedTile = animatedTiles?.find(at => at.id === id);
     if (!animatedTile) return;
     
+    // Validate at least 1 frame exists
+    if (!animatedTile.frameIds || animatedTile.frameIds.length === 0) {
+      setToastMessage('Cannot publish: Add at least 1 frame!');
+      return;
+    }
+    
     // Save as complex tile in the tiles system
     saveTile(
       animatedTile.name,
@@ -224,7 +270,7 @@ export default function TileStudio() {
       null, // No folder
       id, // Use animated tile ID
       true, // isComplex
-      animatedTile.frameIds || [],
+      animatedTile.frameIds,
       animatedTile.fps || 10
     );
     
@@ -449,22 +495,37 @@ export default function TileStudio() {
                 <div className="flex gap-2">
                   <GameButton 
                     onClick={() => {
-                      // Save is automatic via localStorage, just show feedback
+                      if (!currentTile.frameIds || currentTile.frameIds.length === 0) {
+                        setToastMessage('Cannot save: Add at least 1 frame!');
+                        return;
+                      }
                       setToastMessage('Saved to drafts!');
                     }}
                     className="flex-1 text-sm"
-                    style={{ padding: '6px' }}
+                    style={{ 
+                      padding: '6px',
+                      opacity: (!currentTile.frameIds || currentTile.frameIds.length === 0) ? 0.5 : 1,
+                      cursor: (!currentTile.frameIds || currentTile.frameIds.length === 0) ? 'not-allowed' : 'pointer'
+                    }}
                   >
                     SAVE
                   </GameButton>
                   
                   <GameButton 
                     onClick={() => {
+                      if (!currentTile.frameIds || currentTile.frameIds.length === 0) {
+                        setToastMessage('Cannot publish: Add at least 1 frame!');
+                        return;
+                      }
                       publishAnimatedTile(currentTile.id);
                       setToastMessage('Published to Tiles!');
                     }}
                     className="flex-1 text-sm"
-                    style={{ padding: '6px' }}
+                    style={{ 
+                      padding: '6px',
+                      opacity: (!currentTile.frameIds || currentTile.frameIds.length === 0) ? 0.5 : 1,
+                      cursor: (!currentTile.frameIds || currentTile.frameIds.length === 0) ? 'not-allowed' : 'pointer'
+                    }}
                   >
                     PUBLISH
                   </GameButton>
@@ -579,13 +640,13 @@ export default function TileStudio() {
         <GameSection title="Draft Tiles">
           <div className="mb-4">
             <div className="text-xs font-bold mb-2 opacity-70">ANIMATED TILES</div>
-            {(!animatedTiles || animatedTiles.length === 0) ? (
+            {(!animatedTiles || animatedTiles.length === 0 || animatedTiles.filter(at => at.frameIds && at.frameIds.length > 0).length === 0) ? (
               <div className="text-sm opacity-60 text-center py-2">
                 No animated tiles yet
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {animatedTiles.map(at => {
+                {animatedTiles.filter(at => at.frameIds && at.frameIds.length > 0).map(at => {
                   const tileData = getAnimatedTileAsTile(at);
                   return (
                     <TileItem
