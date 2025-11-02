@@ -97,6 +97,7 @@
   @apply border-2 border-black p-3;
   box-shadow: inset 2px 2px 0 rgba(255,255,255,0.2),
               inset -2px -2px 0 rgba(0,0,0,0.2);
+  overflow: visible;
 }
 
 .game-section-title {

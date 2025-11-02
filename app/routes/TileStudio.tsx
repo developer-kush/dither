@@ -453,7 +453,7 @@ export default function TileStudio() {
                 No animated tiles yet
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 pr-2 pb-2">
                 {animatedTiles.filter(at => at.frameIds && at.frameIds.length > 0).map(at => {
                   const tileData = getAnimatedTileAsTile(at);
                   return (
@@ -482,7 +482,7 @@ export default function TileStudio() {
                 No composite tiles yet
           </div>
         ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 pr-2 pb-2">
                 {compositeTiles.map(ct => {
                   return (
                 <div

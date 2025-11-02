@@ -112,15 +112,15 @@ export function TileItem({
 
   return (
     <div
-      className={`relative border-2 cursor-pointer transition-all hover:scale-105 ${
+      className={`relative cursor-pointer transition-all hover:scale-105 ${
         selected ? 'ring-4 ring-blue-500' : ''
       } ${className}`}
       style={{
         width: containerWidth,
         backgroundColor: '#c0c0c0',
         boxShadow: '4px 4px 0 #000',
-        borderColor: '#000',
-        overflow: showDelete ? 'visible' : 'hidden',
+        border: '2px solid #000',
+        overflow: 'visible',
         ...style
       }}
       onClick={onClick}
@@ -130,8 +130,8 @@ export function TileItem({
       <div 
         className={`relative ${showName ? 'border-b-2 border-black' : ''}`}
         style={{ 
-          width: containerWidth,
-          height: containerWidth,
+          width: '100%',
+          aspectRatio: '1',
           backgroundColor: 'var(--theme-bg-medium)',
           display: 'flex',
           alignItems: 'center',
