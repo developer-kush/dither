@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useDebouncedLocalStorage, useLocalStorageLoad } from './useDebouncedLocalStorage';
 
 export interface Tile {
   id: string;
@@ -24,58 +25,26 @@ export interface Folder {
 }
 
 export function useTiles() {
-  const [tiles, setTiles] = useState<Tile[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  // Load from localStorage once on mount
+  const initialTiles = useLocalStorageLoad<Tile[]>('pixelart-tiles', []);
+  const initialFolders = useLocalStorageLoad<Folder[]>('pixelart-folders', []);
+  
+  // Migrate old tiles without folderId on initial load
+  const migratedInitialTiles = useMemo(() => 
+    initialTiles.map((tile: any) => ({
+      ...tile,
+      folderId: tile.folderId ?? null,
+    })),
+    [initialTiles]
+  );
+  
+  const [tiles, setTiles] = useState<Tile[]>(migratedInitialTiles);
+  const [folders, setFolders] = useState<Folder[]>(initialFolders);
+  const [isLoaded, setIsLoaded] = useState(true);
 
-  // Load tiles and folders from localStorage on mount
-  useEffect(() => {
-    try {
-      const storedTiles = localStorage.getItem('pixelart-tiles');
-      const storedFolders = localStorage.getItem('pixelart-folders');
-      
-      if (storedTiles) {
-        const parsed = JSON.parse(storedTiles);
-        // Migrate old tiles without folderId
-        const migratedTiles = parsed.map((tile: any) => ({
-          ...tile,
-          folderId: tile.folderId ?? null,
-        }));
-        setTiles(migratedTiles);
-      }
-      
-      if (storedFolders) {
-        setFolders(JSON.parse(storedFolders));
-      }
-      
-      setIsLoaded(true);
-    } catch (error) {
-      console.error('Error loading tiles:', error);
-      setIsLoaded(true);
-    }
-  }, []);
-
-  // Save tiles to localStorage whenever they change
-  useEffect(() => {
-    if (isLoaded) {
-      try {
-        localStorage.setItem('pixelart-tiles', JSON.stringify(tiles));
-      } catch (error) {
-        console.error('Error saving tiles:', error);
-      }
-    }
-  }, [tiles, isLoaded]);
-
-  // Save folders to localStorage whenever they change
-  useEffect(() => {
-    if (isLoaded) {
-      try {
-        localStorage.setItem('pixelart-folders', JSON.stringify(folders));
-      } catch (error) {
-        console.error('Error saving folders:', error);
-      }
-    }
-  }, [folders, isLoaded]);
+  // Debounced localStorage writes (only saves after 500ms of inactivity)
+  useDebouncedLocalStorage('pixelart-tiles', tiles, 500);
+  useDebouncedLocalStorage('pixelart-folders', folders, 500);
 
   const saveTile = (
     name: string, 

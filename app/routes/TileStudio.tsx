@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
 import { useTiles } from "../hooks/useTiles";
-import { useLocalStorage } from "../hooks/useLocalStorage";
+import { useDebouncedLocalStorage, useLocalStorageLoad } from "../hooks/useDebouncedLocalStorage";
 import { useRouteCycling } from "../hooks/useRouteCycling";
 import { GameButton } from "../components/GameButton";
 import { NavBar } from "../components/NavBar";
@@ -59,12 +59,15 @@ export default function TileStudio() {
     t.labels?.includes('subtype:composite')
   );
   
-  // Tool state persistence
-  const [toolStateData, setToolStateData] = useLocalStorage<ToolState>('tile-studio-tool-state', {
+  // Tool state persistence - load once on mount, save with debounce
+  const initialToolState = useLocalStorageLoad<ToolState>('tile-studio-tool-state', {
     animated: { currentTileId: null },
     composite: { currentTileId: null }
   });
-  const [toolState, setToolState] = useState<ToolState>(toolStateData);
+  const [toolState, setToolState] = useState<ToolState>(initialToolState);
+  
+  // Debounced save to localStorage (only saves after 300ms of inactivity)
+  useDebouncedLocalStorage('tile-studio-tool-state', toolState, 300);
   
   const [editingName, setEditingName] = useState("");
   const [tilesMenuOpen, setTilesMenuOpen] = useState(false);
@@ -82,11 +85,6 @@ export default function TileStudio() {
       document.documentElement.setAttribute('data-theme', 'green');
     };
   }, []);
-
-  // Save tool state to localStorage
-  useEffect(() => {
-    setToolStateData(toolState);
-  }, [toolState]);
 
   // F key to toggle tool
   useEffect(() => {
