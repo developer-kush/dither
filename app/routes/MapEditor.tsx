@@ -21,7 +21,7 @@ import {
 
 export function meta() {
   return [
-    { title: "Map Editor - Dither" },
+    { title: "Geography - Dither" },
     { name: "description", content: "Create maps using your pixel art tiles" },
   ];
 }
@@ -639,7 +639,7 @@ export default function MapEditor() {
       <div className="w-full h-screen flex" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
         {/* Navbar */}
         <NavBar 
-          title="Map Editor"
+          title="Geography"
         />
 
       {/* Right Menu - Tools */}
@@ -840,7 +840,7 @@ export default function MapEditor() {
         {filteredTiles.length === 0 ? (
           <div className="text-sm opacity-60 text-center">
             <p>No published tiles{selectedLabels.length > 0 ? ' with these labels' : ''}</p>
-            <Link to="/tile-editor" className="underline">Create & publish tiles</Link>
+            <Link to="/canvas" className="underline">Create & publish tiles</Link>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">

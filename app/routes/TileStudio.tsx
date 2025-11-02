@@ -21,7 +21,7 @@ import {
 
 export function meta() {
   return [
-    { title: "Tile Studio - Dither" },
+    { title: "Studio - Dither" },
     { name: "description", content: "Create animated and composite tiles" },
   ];
 }
@@ -392,7 +392,7 @@ export default function TileStudio() {
 
   return (
     <div className="w-full h-screen flex flex-col" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
-      <NavBar title="Tile Studio" rightActions={rightActions} />
+      <NavBar title="Studio" rightActions={rightActions} />
 
       {/* Left Sliding Menu - Draft Tiles */}
       <GameMenu 
@@ -508,7 +508,7 @@ export default function TileStudio() {
               {allAvailableTiles.length === 0 ? (
             <div className="text-sm opacity-60 text-center py-4">
                   <p>No tiles available</p>
-                  <Link to="/tile-editor" className="underline">Create tiles in Tile Editor</Link>
+                  <Link to="/canvas" className="underline">Create tiles in Canvas</Link>
             </div>
           ) : (
                 <div className="space-y-4">

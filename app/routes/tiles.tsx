@@ -110,7 +110,7 @@ export default function TilesPage() {
 
   return (
     <div className="w-full h-screen flex flex-col" style={{ backgroundColor: 'var(--theme-bg-light)' }}>
-      <NavBar title="Tiles Manager" />
+      <NavBar title="Library" />
 
       <div className="flex-1 flex mt-16 overflow-hidden">
         {/* Left Side - Tiles Grid (3/4 width) */}
@@ -378,7 +378,7 @@ export default function TilesPage() {
 
               {/* Publishing Status */}
               <div className="mb-6 p-4 border-2 border-black" style={{ backgroundColor: 'var(--theme-bg-medium)', boxShadow: '4px 4px 0 #000' }}>
-                <div className="text-sm font-bold mb-2">Map Editor Status</div>
+                <div className="text-sm font-bold mb-2">Geography Status</div>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm">{selectedTile.isPublished ? 'Published' : 'Not Published'}</span>
                   <span className={`text-xs font-bold ${selectedTile.isPublished ? 'text-green-700' : 'text-gray-400'}`}>

@@ -2,10 +2,10 @@ import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 
 const ROUTES = [
-  '/tile-editor',
-  '/tile-studio',
-  '/tiles',
-  '/map-editor'
+  '/canvas',
+  '/studio',
+  '/library',
+  '/geography'
 ];
 
 export function useRouteCycling() {

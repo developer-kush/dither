@@ -33,43 +33,43 @@ export default function Home() {
           
           <div className="flex flex-wrap gap-4 justify-center">
             <Link 
-              to="/tile-editor"
+              to="/canvas"
               className="inline-block px-8 py-4 text-lg border-4 border-white font-bold transition-all hover:translate-x-1 hover:translate-y-1 bg-white text-black"
               style={{ 
                 boxShadow: '6px 6px 0 #fff'
               }}
             >
-              TILE EDITOR
+              CANVAS
             </Link>
             
             <Link 
-              to="/tile-studio"
+              to="/studio"
               className="inline-block px-8 py-4 text-lg border-4 border-white font-bold transition-all hover:translate-x-1 hover:translate-y-1 bg-white text-black"
               style={{ 
                 boxShadow: '6px 6px 0 #fff'
               }}
             >
-              TILE STUDIO
+              STUDIO
             </Link>
             
             <Link 
-              to="/tiles"
+              to="/library"
               className="inline-block px-8 py-4 text-lg border-4 border-white font-bold transition-all hover:translate-x-1 hover:translate-y-1 bg-white text-black"
               style={{ 
                 boxShadow: '6px 6px 0 #fff'
               }}
             >
-              TILES MANAGER
+              LIBRARY
             </Link>
             
             <Link 
-              to="/map-editor"
+              to="/geography"
               className="inline-block px-8 py-4 text-lg border-4 border-white font-bold transition-all hover:translate-x-1 hover:translate-y-1 bg-white text-black"
               style={{ 
                 boxShadow: '6px 6px 0 #fff'
               }}
             >
-              MAP EDITOR
+              GEOGRAPHY
             </Link>
           </div>
         </div>

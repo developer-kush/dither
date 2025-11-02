@@ -79,31 +79,31 @@ export const NavBar: React.FC<NavBarProps> = ({
               }}
             >
               <Link 
-                to="/tile-editor"
+                to="/canvas"
                 className="block px-4 py-3 border-b-2 border-black hover:bg-[var(--theme-accent)] transition-colors"
               >
-                <div className="font-bold">Tile Editor</div>
+                <div className="font-bold">Canvas</div>
                 <div className="text-xs opacity-60">Create pixel art tiles</div>
               </Link>
               <Link 
-                to="/tile-studio"
+                to="/studio"
                 className="block px-4 py-3 border-b-2 border-black hover:bg-[var(--theme-accent)] transition-colors"
               >
-                <div className="font-bold">Tile Studio</div>
+                <div className="font-bold">Studio</div>
                 <div className="text-xs opacity-60">Create animated tiles</div>
               </Link>
               <Link 
-                to="/tiles"
+                to="/library"
                 className="block px-4 py-3 border-b-2 border-black hover:bg-[var(--theme-accent)] transition-colors"
               >
-                <div className="font-bold">Tiles Manager</div>
+                <div className="font-bold">Library</div>
                 <div className="text-xs opacity-60">View and manage all tiles</div>
               </Link>
             <Link 
-              to="/map-editor"
+              to="/geography"
               className="block px-4 py-3 border-b-2 border-black hover:bg-[var(--theme-accent)] transition-colors"
             >
-              <div className="font-bold">Map Editor</div>
+              <div className="font-bold">Geography</div>
               <div className="text-xs opacity-60">Build maps with tiles</div>
             </Link>
             

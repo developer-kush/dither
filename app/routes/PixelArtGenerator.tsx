@@ -20,7 +20,7 @@ const GRID_SIZES = [8, 16, 32, 64];
 
 export function meta() {
   return [
-    { title: "Tile Editor - Dither" },
+    { title: "Canvas - Dither" },
     { name: "description", content: "Edit and create pixel art tiles with Dither" },
   ];
 }
@@ -944,7 +944,7 @@ export default function PixelArtGenerator() {
 
       {/* NavBar */}
       <NavBar 
-        title="Tile Editor"
+        title="Canvas"
         rightActions={
           <>
             <GameButton onClick={() => fileInputRef.current?.click()}>
@@ -1120,7 +1120,7 @@ export default function PixelArtGenerator() {
           
           {/* Publish Section */}
           <div className="pt-2 border-t border-black/20">
-            <div className="text-[10px] opacity-60 uppercase tracking-wide mb-2">Publish to Map Editor</div>
+            <div className="text-[10px] opacity-60 uppercase tracking-wide mb-2">Publish to Geography</div>
             
             <button
               onClick={handleTogglePublish}
