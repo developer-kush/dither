@@ -224,6 +224,13 @@ export default function TileStudio() {
     if (!animatedTile) return;
     
     const currentFrames = animatedTile.animationFrames || [];
+    
+    // Prevent deleting the last frame - an animated tile needs at least 1 frame
+    if (currentFrames.length <= 1) {
+      setToastMessage('Cannot remove the last frame! Delete the tile instead.');
+      return;
+    }
+    
     const newFrames = currentFrames.filter((_, i) => i !== frameIndex);
     
     saveTile(
@@ -765,14 +772,15 @@ export default function TileStudio() {
                           e.stopPropagation();
                           removeFrameFromAnimatedTile(currentAnimatedTile.id, index);
                         }}
-                        className="absolute w-6 h-6 flex items-center justify-center border-2 border-black hover:translate-x-[1px] hover:translate-y-[1px] transition-all active:translate-x-[2px] active:translate-y-[2px] z-10"
+                        disabled={currentAnimatedTile.animationFrames.length <= 1}
+                        className="absolute w-6 h-6 flex items-center justify-center border-2 border-black hover:translate-x-[1px] hover:translate-y-[1px] transition-all active:translate-x-[2px] active:translate-y-[2px] z-10 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0"
                         style={{ 
                           backgroundColor: '#ef4444',
                           boxShadow: '2px 2px 0 #000',
                           top: '-2px',
                           right: '-2px'
                         }}
-                        title="Remove frame"
+                        title={currentAnimatedTile.animationFrames.length <= 1 ? "Cannot remove the last frame" : "Remove frame"}
                       >
                         <XMarkIcon className="w-4 h-4 text-white" />
                       </button>
