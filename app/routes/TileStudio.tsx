@@ -316,6 +316,9 @@ export default function TileStudio() {
   // === SHARED FUNCTIONS ===
   
   const selectDraftTile = (tool: StudioTool, tileId: string) => {
+    // Switch to the appropriate tool
+    setCurrentTool(tool);
+    
     setToolState(prev => ({
       ...prev,
       [tool]: { currentTileId: tileId }
@@ -450,7 +453,7 @@ export default function TileStudio() {
                 No animated tiles yet
               </div>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {animatedTiles.filter(at => at.frameIds && at.frameIds.length > 0).map(at => {
                   const tileData = getAnimatedTileAsTile(at);
                   return (
@@ -479,7 +482,7 @@ export default function TileStudio() {
                 No composite tiles yet
           </div>
         ) : (
-              <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {compositeTiles.map(ct => {
                   return (
                 <div
@@ -607,9 +610,9 @@ export default function TileStudio() {
 
       {/* Main Canvas Area with Properties Panel */}
       <div 
-        className="w-full h-screen pt-16 flex flex-col transition-all"
+        className="h-screen pt-16 flex flex-col transition-all"
         style={{ 
-          marginRight: (currentTool === 'animated' && currentAnimatedTile) ? '520px' : '0'
+          width: (currentTool === 'animated' && currentAnimatedTile) ? 'calc(100% - 520px)' : '100%'
         }}
       >
         {/* Center Content Area */}
@@ -715,7 +718,7 @@ export default function TileStudio() {
                   }}
                   className={`w-full px-3 py-2 text-xs border-2 border-black transition-colors ${
                     currentAnimatedTile.isPublished
-                      ? 'bg-green-200 hover:bg-red-200'
+                      ? 'bg-red-200 hover:bg-red-300'
                       : 'bg-[var(--theme-bg-light)] hover:bg-green-200'
                   }`}
                   style={{ 
@@ -725,7 +728,7 @@ export default function TileStudio() {
                   title={currentAnimatedTile.isPublished ? 'Click to unpublish' : 'Publish'}
                 >
                   <div className="flex items-center justify-center gap-1 font-bold">
-                    {currentAnimatedTile.isPublished ? 'Published' : 'Publish'}
+                    {currentAnimatedTile.isPublished ? 'Unpublish' : 'Publish'}
                 </div>
                 </button>
               </div>
@@ -767,16 +770,32 @@ export default function TileStudio() {
         
         {/* Bottom Frames Strip */}
         {currentAnimatedTile && currentTool === 'animated' && (
-          <div className="border-t-2 border-black px-6 py-3" style={{ backgroundColor: 'var(--theme-bg-panel)' }}>
-            <div className="text-xs font-bold mb-2 opacity-60">FRAMES</div>
-            <div className="flex gap-3 overflow-x-auto pb-1">
+          <div className="px-8 py-4 border-t-2 border-black" style={{ backgroundColor: 'var(--theme-bg-light)', minHeight: '200px' }}>
+            <div className="mb-3">
+              <span 
+                className="inline-block px-3 py-1 text-xs font-bold border-2 border-black"
+                style={{ 
+                  backgroundColor: 'var(--theme-bg-medium)',
+                  boxShadow: '2px 2px 0 #000'
+                }}
+              >
+                FRAMES
+              </span>
+            </div>
+            <div 
+              className="flex gap-4 overflow-x-auto overflow-y-visible pb-2 pt-1"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'var(--theme-bg-medium) transparent'
+              }}
+            >
               {currentAnimatedTile.frameIds && currentAnimatedTile.frameIds.length > 0 ? (
                 currentAnimatedTile.frameIds.map((frameId, index) => {
                   const tile = getTile(frameId);
-                  if (!tile) return null;
-                  
-                  return (
-                    <div key={index} className="relative flex-shrink-0">
+                    if (!tile) return null;
+
+                    return (
+                    <div key={index} className="relative flex-shrink-0 p-1">
                       <TileItem
                         tile={tile}
                         size="small"
@@ -792,13 +811,13 @@ export default function TileStudio() {
                           removeFrameFromAnimatedTile(currentAnimatedTile.id, index);
                           if (selectedFrameIndex === index) setSelectedFrameIndex(null);
                         }}
-                        className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center border border-black hover:scale-110 transition-transform"
+                        className="absolute top-2 right-2 w-5 h-5 flex items-center justify-center border border-black hover:scale-110 transition-transform z-10"
                         style={{ backgroundColor: '#ef4444' }}
                         title="Remove frame"
                       >
                         <XMarkIcon className="w-3 h-3 text-white" />
                       </button>
-                      <div className="absolute bottom-1 left-1 bg-black text-white px-1 text-xs font-bold">
+                      <div className="absolute bottom-2 left-2 bg-black text-white px-1 text-xs font-bold z-10">
                         {index + 1}
                       </div>
                     </div>
