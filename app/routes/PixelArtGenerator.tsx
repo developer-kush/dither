@@ -533,8 +533,8 @@ export default function PixelArtGenerator() {
     saveTile(currentTileName.trim(), grid, gridSize, currentFolderId, currentTileId);
     
     // Add system label for dimensions (for use in animations)
-    const dimsLabel = `dims:${gridSize}x${gridSize}`;
-    addLabelToTile(currentTileId, dimsLabel);
+    // All basic tiles are 1x1 tile units regardless of pixel size
+    addLabelToTile(currentTileId, 'dims:1x1');
     
     if (!existingTile) {
       showToast(`Tile "${currentTileName.trim()}" saved successfully!`, 'success');
