@@ -90,6 +90,7 @@ export default function TileStudio() {
   const [availableTilesMenuOpen, setAvailableTilesMenuOpen] = useState(false);
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const newMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Animated tile specific state
   const [selectedFrameIndex, setSelectedFrameIndex] = useState<number | null>(null);
@@ -137,6 +138,15 @@ export default function TileStudio() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (newMenuTimeoutRef.current) {
+        clearTimeout(newMenuTimeoutRef.current);
+      }
+    };
   }, []);
 
   // === ANIMATED TILE FUNCTIONS ===
@@ -326,6 +336,21 @@ export default function TileStudio() {
       if (tile) setEditingName(tile.name);
     }
     setTilesMenuOpen(false);
+  };
+  
+  // Handlers for New menu with delay
+  const handleNewMenuEnter = () => {
+    if (newMenuTimeoutRef.current) {
+      clearTimeout(newMenuTimeoutRef.current);
+      newMenuTimeoutRef.current = null;
+    }
+    setNewMenuOpen(true);
+  };
+  
+  const handleNewMenuLeave = () => {
+    newMenuTimeoutRef.current = setTimeout(() => {
+      setNewMenuOpen(false);
+    }, 200); // 200ms delay
   };
 
   // Render function for animated tile tool
@@ -747,8 +772,8 @@ export default function TileStudio() {
           
           <div 
             className="relative"
-            onMouseEnter={() => setNewMenuOpen(true)}
-            onMouseLeave={() => setNewMenuOpen(false)}
+            onMouseEnter={handleNewMenuEnter}
+            onMouseLeave={handleNewMenuLeave}
           >
             <GameButton>
               <PlusIcon className="w-5 h-5" />
@@ -759,12 +784,15 @@ export default function TileStudio() {
               <div 
                 className="absolute right-0 top-full mt-2 border-2 border-black min-w-48 z-50"
                 style={{ backgroundColor: 'var(--theme-bg-panel)', boxShadow: '4px 4px 0 #000' }}
+                onMouseEnter={handleNewMenuEnter}
+                onMouseLeave={handleNewMenuLeave}
               >
                 <div
                   className="p-3 cursor-pointer hover:bg-[var(--theme-bg-medium)] border-b border-black"
                   onClick={() => {
                     createNewAnimatedTile();
                     setCurrentTool('animated');
+                    setNewMenuOpen(false);
                   }}
                 >
                   <div className="font-bold">Animated</div>
@@ -775,6 +803,7 @@ export default function TileStudio() {
                   onClick={() => {
                     createNewCompositeTile();
                     setCurrentTool('composite');
+                    setNewMenuOpen(false);
                   }}
                 >
                   <div className="font-bold">Composite</div>
